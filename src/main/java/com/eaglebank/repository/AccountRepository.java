@@ -27,4 +27,6 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.account.id = :accountId")
     long countTransactionsByAccountId(@Param("accountId") UUID accountId);
+    
+    long countByUserId(UUID userId);
 }

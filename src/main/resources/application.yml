@@ -33,3 +33,10 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
+    tryItOutEnabled: true
+    filter: true
+    operationsSorter: method
+    tagsSorter: alpha
+    displayRequestDuration: true
+  show-actuator: false

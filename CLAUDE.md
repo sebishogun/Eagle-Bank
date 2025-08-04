@@ -418,51 +418,32 @@ Each feature should be developed using TDD:
 25. ✅ Implement AccountController with REST endpoints
 26. ✅ Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
 27. ✅ Implement InsufficientFundsException for transaction validation
+28. ✅ Write tests for TransactionService deposit/withdrawal logic
+29. ✅ Implement TransactionService with balance validation
+30. ✅ Write tests for TransactionController endpoints
+31. ✅ Implement TransactionController
+32. ✅ Implement transaction reference number generation
+33. ✅ Implement insufficient funds validation
+34. ✅ Implement authorization checks for transactions
+35. ✅ Create UpdateUserRequest DTO for user updates
+36. ✅ Add countByUserId to AccountRepository for user deletion validation
+37. ✅ Implement UserService updateUser and deleteUser methods
+38. ✅ Add PATCH and DELETE endpoints to UserController
+39. ✅ Write comprehensive integration tests for user update/delete operations
+40. ✅ Implement authorization checks (users can only modify their own data)
+41. ✅ Implement business rule: cannot delete user with existing accounts
+42. ✅ Create meaningful integration tests that validate real behavior
 
 ### 🚧 In Progress
-- Write tests for TransactionService deposit/withdrawal logic
-- Implement TransactionService with balance validation
+- None currently
 
 ### 📋 Pending Tasks (Priority Order)
 
-#### User Management (Extended)
-- Write tests for user update (PATCH) operations
-- Implement user update operations
-- Write tests for user delete operations
-- Implement user delete operations (with validation for existing accounts)
-- Implement authorization checks (users can only modify their own data)
-
-#### Account Management
-- ✅ Create Account DTOs (CreateAccountRequest, UpdateAccountRequest, AccountResponse)
-- ✅ Write tests for AccountService CRUD operations
-- ✅ Implement AccountService with business logic
-- ✅ Write tests for AccountController endpoints
-- ✅ Implement AccountController
-- ✅ Implement account number generation logic
-- ✅ Implement authorization checks (users can only access their own accounts)
-
-#### Transaction Management
-- ✅ Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
-- Write tests for TransactionService deposit/withdrawal logic
-- Implement TransactionService with balance validation
-- Write tests for TransactionController endpoints
-- Implement TransactionController
-- Implement transaction reference number generation
-- Implement insufficient funds validation
-- Implement authorization checks (users can only transact on their own accounts)
-
-#### Integration & Testing
-- Write integration tests with Testcontainers for user flows
-- Write integration tests with Testcontainers for account operations
-- Write integration tests with Testcontainers for transaction operations
-- Test all error scenarios from requirements document
-- Test authorization and forbidden access scenarios
-
 #### Documentation & Deployment
 - Create or update OpenAPI specification with all endpoints
-- Add Swagger annotations to all controllers
+- Add Swagger UI integration to the project
 - Update README with final API documentation
-- Create Postman collection for testing
+- Create Postman collection for testing (optional)
 - Final testing and validation of all requirements
 
 ## Memories

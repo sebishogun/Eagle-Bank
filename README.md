@@ -2,6 +2,26 @@
 
 REST API for Eagle Bank - a fictional banking system that allows users to manage accounts and perform transactions.
 
+## API Documentation
+
+### 🚀 Swagger UI - Interactive API Documentation
+
+Once the application is running, access the interactive API documentation at:
+
+**http://localhost:8080/api/swagger-ui.html**
+
+Features:
+- Browse all available endpoints
+- View request/response schemas
+- Try out API calls directly from the browser
+- Automatic JWT token handling
+
+### OpenAPI Specification
+
+The OpenAPI 3.0 specification (JSON format) is available at:
+
+**http://localhost:8080/api/v3/api-docs**
+
 ## Technology Stack
 
 - Java 21

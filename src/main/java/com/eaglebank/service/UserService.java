@@ -1,10 +1,13 @@
 package com.eaglebank.service;
 
 import com.eaglebank.dto.request.CreateUserRequest;
+import com.eaglebank.dto.request.UpdateUserRequest;
 import com.eaglebank.dto.response.UserResponse;
 import com.eaglebank.entity.User;
+import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.ResourceAlreadyExistsException;
 import com.eaglebank.exception.ResourceNotFoundException;
+import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,7 @@ import java.util.UUID;
 public class UserService {
     
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     
     public UserResponse createUser(CreateUserRequest request) {
@@ -64,6 +68,65 @@ public class UserService {
         
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+    }
+    
+    @Transactional
+    public UserResponse updateUser(UUID userId, UUID requesterId, UpdateUserRequest request) {
+        log.debug("Updating user with id: {} by requester: {}", userId, requesterId);
+        
+        // Check if requester is the same as the user being updated
+        if (!userId.equals(requesterId)) {
+            throw new ForbiddenException("Users can only update their own information");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // Update fields only if they are provided (not null)
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getAddress() != null) {
+            user.setAddress(request.getAddress());
+        }
+        if (request.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+        
+        User updatedUser = userRepository.save(user);
+        log.info("User {} updated successfully", userId);
+        
+        return mapToUserResponse(updatedUser);
+    }
+    
+    @Transactional
+    public void deleteUser(UUID userId, UUID requesterId) {
+        log.debug("Deleting user with id: {} by requester: {}", userId, requesterId);
+        
+        // Check if requester is the same as the user being deleted
+        if (!userId.equals(requesterId)) {
+            throw new ForbiddenException("Users can only delete their own account");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // Check if user has any accounts
+        long accountCount = accountRepository.countByUserId(userId);
+        if (accountCount > 0) {
+            throw new IllegalStateException(
+                String.format("Cannot delete user with %d existing account(s). Please delete all accounts first.", accountCount)
+            );
+        }
+        
+        userRepository.delete(user);
+        log.info("User {} deleted successfully", userId);
     }
     
     private UserResponse mapToUserResponse(User user) {
