@@ -15,17 +15,5 @@ import java.util.UUID;
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
     
-    List<Transaction> findByAccountIdOrderByTransactionDateDesc(UUID accountId);
-    
     Page<Transaction> findByAccountIdOrderByCreatedAtDesc(UUID accountId, Pageable pageable);
-    
-    Optional<Transaction> findByIdAndAccountId(UUID id, UUID accountId);
-    
-    @Query("SELECT t FROM Transaction t WHERE t.account.id = :accountId AND t.account.user.id = :userId")
-    List<Transaction> findByAccountIdAndUserId(@Param("accountId") UUID accountId, @Param("userId") UUID userId);
-    
-    @Query("SELECT t FROM Transaction t WHERE t.id = :transactionId AND t.account.id = :accountId AND t.account.user.id = :userId")
-    Optional<Transaction> findByIdAndAccountIdAndUserId(@Param("transactionId") UUID transactionId, 
-                                                        @Param("accountId") UUID accountId, 
-                                                        @Param("userId") UUID userId);
 }

@@ -4,7 +4,6 @@ import com.eaglebank.dto.request.CreateAccountRequest;
 import com.eaglebank.dto.request.UpdateAccountRequest;
 import com.eaglebank.dto.response.AccountResponse;
 import com.eaglebank.entity.Account;
-import com.eaglebank.entity.Account.AccountType;
 import com.eaglebank.entity.User;
 import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.ResourceNotFoundException;

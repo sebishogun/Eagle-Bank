@@ -15,15 +15,11 @@ import java.util.UUID;
 @Repository
 public interface AccountRepository extends JpaRepository<Account, UUID> {
     
-    List<Account> findByUserId(UUID userId);
-    
     Page<Account> findByUserId(UUID userId, Pageable pageable);
     
     Optional<Account> findByAccountNumber(String accountNumber);
     
     boolean existsByAccountNumber(String accountNumber);
-    
-    Optional<Account> findByIdAndUserId(UUID id, UUID userId);
     
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.account.id = :accountId")
     long countTransactionsByAccountId(@Param("accountId") UUID accountId);

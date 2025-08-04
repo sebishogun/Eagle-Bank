@@ -48,24 +48,8 @@ public class TransactionService {
         validateAccountOwnership(account, userId);
         
         // Get current balance
-        BigDecimal balanceBefore = account.getBalance();
-        BigDecimal balanceAfter;
-        
-        // Calculate new balance based on transaction type
-        if (request.getTransactionType() == TransactionType.WITHDRAWAL) {
-            // Check sufficient funds
-            if (balanceBefore.compareTo(request.getAmount()) < 0) {
-                throw new InsufficientFundsException(
-                    String.format("Insufficient funds. Available balance: %s, Requested amount: %s", 
-                        balanceBefore, request.getAmount())
-                );
-            }
-            balanceAfter = balanceBefore.subtract(request.getAmount());
-        } else {
-            // DEPOSIT
-            balanceAfter = balanceBefore.add(request.getAmount());
-        }
-        
+        BigDecimal balanceAfter = getBigDecimal(request, account);
+
         // Create transaction
         Transaction transaction = Transaction.builder()
                 .id(UuidGenerator.generateUuidV7())
@@ -91,6 +75,27 @@ public class TransactionService {
                 accountId, request.getAmount());
         
         return mapToResponse(savedTransaction);
+    }
+
+    private static BigDecimal getBigDecimal(CreateTransactionRequest request, Account account) {
+        BigDecimal balanceBefore = account.getBalance();
+        BigDecimal balanceAfter;
+
+        // Calculate new balance based on transaction type
+        if (request.getTransactionType() == TransactionType.WITHDRAWAL) {
+            // Check sufficient funds
+            if (balanceBefore.compareTo(request.getAmount()) < 0) {
+                throw new InsufficientFundsException(
+                    String.format("Insufficient funds. Available balance: %s, Requested amount: %s",
+                        balanceBefore, request.getAmount())
+                );
+            }
+            balanceAfter = balanceBefore.subtract(request.getAmount());
+        } else {
+            // DEPOSIT
+            balanceAfter = balanceBefore.add(request.getAmount());
+        }
+        return balanceAfter;
     }
 
     public TransactionResponse getTransactionById(UUID userId, UUID accountId, UUID transactionId) {
