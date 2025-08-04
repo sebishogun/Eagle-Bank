@@ -21,8 +21,10 @@
     <properties>
         <java.version>21</java.version>
         <jjwt.version>0.12.6</jjwt.version>
-        <springdoc.version>2.6.0</springdoc.version>
+        <springdoc.version>2.7.0</springdoc.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <commons-compress.version>1.27.1</commons-compress.version>
         <uuid-creator.version>6.0.0</uuid-creator.version>
         <lombok.version>1.18.36</lombok.version>
     </properties>
@@ -100,7 +102,20 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
+            <version>${springdoc.version}</version>
+        </dependency>
+        
+        <!-- Security vulnerability overrides -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang3.version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>${commons-compress.version}</version>
         </dependency>
         
         <!-- Testing -->
