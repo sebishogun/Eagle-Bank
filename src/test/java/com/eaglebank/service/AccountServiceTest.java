@@ -8,7 +8,7 @@ import com.eaglebank.entity.Account.AccountType;
 import com.eaglebank.entity.User;
 import com.eaglebank.exception.ResourceAlreadyExistsException;
 import com.eaglebank.exception.ResourceNotFoundException;
-import com.eaglebank.exception.UnauthorizedException;
+import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
 import com.eaglebank.util.UuidGenerator;
@@ -152,7 +152,7 @@ class AccountServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
 
         assertThatThrownBy(() -> accountService.getAccountById(otherUserId, accountId))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("not authorized to access this account");
     }
 
@@ -208,7 +208,7 @@ class AccountServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
 
         assertThatThrownBy(() -> accountService.updateAccount(otherUserId, accountId, request))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("not authorized to access this account");
     }
 
@@ -238,7 +238,7 @@ class AccountServiceTest {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
 
         assertThatThrownBy(() -> accountService.deleteAccount(otherUserId, accountId))
-                .isInstanceOf(UnauthorizedException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("not authorized to access this account");
     }
 

@@ -17,11 +17,13 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 
+import java.util.Date;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -68,10 +70,13 @@ class AuthServiceTest {
     void login_ShouldReturnAuthResponse_WhenCredentialsAreValid() {
         // Given
         String token = "jwt.token.here";
+        Date expirationDate = new Date(System.currentTimeMillis() + 86400000); // 24 hours from now
+        
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(userPrincipal);
         when(tokenProvider.generateToken(userId, "john.doe@example.com")).thenReturn(token);
+        when(tokenProvider.getExpirationDateFromToken(anyString())).thenReturn(expirationDate);
         
         // When
         AuthResponse response = authService.login(loginRequest);

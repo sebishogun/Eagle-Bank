@@ -3,14 +3,18 @@ package com.eaglebank.controller;
 import com.eaglebank.dto.request.LoginRequest;
 import com.eaglebank.dto.response.AuthResponse;
 import com.eaglebank.exception.UnauthorizedException;
+import com.eaglebank.security.JwtAuthenticationEntryPoint;
+import com.eaglebank.security.JwtAuthenticationFilter;
+import com.eaglebank.security.JwtTokenProvider;
 import com.eaglebank.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -25,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
     
     @Autowired
@@ -36,6 +40,18 @@ class AuthControllerTest {
     
     @MockitoBean
     private AuthService authService;
+    
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
+    
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    
+    @MockitoBean
+    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    
+    @MockitoBean
+    private UserDetailsService userDetailsService;
     
     private LoginRequest loginRequest;
     private AuthResponse authResponse;

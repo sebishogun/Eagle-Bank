@@ -6,8 +6,8 @@ import com.eaglebank.dto.response.AccountResponse;
 import com.eaglebank.entity.Account;
 import com.eaglebank.entity.Account.AccountType;
 import com.eaglebank.entity.User;
+import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.ResourceNotFoundException;
-import com.eaglebank.exception.UnauthorizedException;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
 import com.eaglebank.util.UuidGenerator;
@@ -39,8 +39,11 @@ public class AccountService {
         Account account = Account.builder()
                 .id(UuidGenerator.generateUuidV7())
                 .accountNumber(generateUniqueAccountNumber())
+                .accountName(user.getFirstName() + " " + user.getLastName() + " " + request.getAccountType())
                 .accountType(request.getAccountType())
                 .balance(request.getInitialBalance())
+                .currency("USD")
+                .status(Account.AccountStatus.ACTIVE)
                 .user(user)
                 .build();
 
@@ -109,7 +112,7 @@ public class AccountService {
 
     private void validateAccountOwnership(Account account, UUID userId) {
         if (!account.getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("User is not authorized to access this account");
+            throw new ForbiddenException("User is not authorized to access this account");
         }
     }
 

@@ -1,6 +1,8 @@
 package com.eaglebank.repository;
 
 import com.eaglebank.entity.Transaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,8 @@ import java.util.UUID;
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
     
     List<Transaction> findByAccountIdOrderByTransactionDateDesc(UUID accountId);
+    
+    Page<Transaction> findByAccountIdOrderByCreatedAtDesc(UUID accountId, Pageable pageable);
     
     Optional<Transaction> findByIdAndAccountId(UUID id, UUID accountId);
     
