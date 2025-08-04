@@ -403,36 +403,66 @@ Each feature should be developed using TDD:
 10. ✅ Implement UserService to pass tests
 11. ✅ Write tests for UserController POST and GET endpoints
 12. ✅ Implement UserController to pass tests
-13. ✅ Create custom exceptions and GlobalExceptionHandler
+13. ✅ Write tests for JWT authentication and security
+14. ✅ Implement JWT security configuration and token provider
+15. ✅ Write tests for AuthService and AuthController
+16. ✅ Implement AuthService and AuthController for login
+17. ✅ Create custom exceptions and GlobalExceptionHandler
+18. ✅ Create DTOs for request/response objects (User and Auth DTOs)
+19. ✅ Fix deprecated DaoAuthenticationProvider methods (Spring Security 6.3+)
+20. ✅ Configure Maven compiler plugin for Lombok annotation processing
+21. ✅ Create Account DTOs (CreateAccountRequest, UpdateAccountRequest, AccountResponse)
+22. ✅ Write comprehensive tests for AccountService CRUD operations
+23. ✅ Implement AccountService with business logic and authorization
+24. ✅ Write tests for AccountController endpoints
+25. ✅ Implement AccountController with REST endpoints
+26. ✅ Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
+27. ✅ Implement InsufficientFundsException for transaction validation
 
 ### 🚧 In Progress
-- Create DTOs for request/response objects (partially done - User DTOs created)
-
-### 📋 Pending Tasks
-- Implement UserService to pass tests
-- Write tests for UserController POST and GET endpoints
-- Implement UserController to pass tests
-- Write tests for JWT authentication and security
-- Implement JWT security configuration and token provider
-- Write tests for AuthService and AuthController
-- Implement AuthService and AuthController for login
-- Write tests for user update (PATCH) and delete operations
-- Implement user update and delete operations
-- Write tests for AccountService CRUD operations
-- Implement AccountService to pass tests
-- Write tests for AccountController endpoints
-- Implement AccountController to pass tests
 - Write tests for TransactionService deposit/withdrawal logic
-- Implement TransactionService to pass tests
+- Implement TransactionService with balance validation
+
+### 📋 Pending Tasks (Priority Order)
+
+#### User Management (Extended)
+- Write tests for user update (PATCH) operations
+- Implement user update operations
+- Write tests for user delete operations
+- Implement user delete operations (with validation for existing accounts)
+- Implement authorization checks (users can only modify their own data)
+
+#### Account Management
+- ✅ Create Account DTOs (CreateAccountRequest, UpdateAccountRequest, AccountResponse)
+- ✅ Write tests for AccountService CRUD operations
+- ✅ Implement AccountService with business logic
+- ✅ Write tests for AccountController endpoints
+- ✅ Implement AccountController
+- ✅ Implement account number generation logic
+- ✅ Implement authorization checks (users can only access their own accounts)
+
+#### Transaction Management
+- ✅ Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
+- Write tests for TransactionService deposit/withdrawal logic
+- Implement TransactionService with balance validation
 - Write tests for TransactionController endpoints
-- Implement TransactionController to pass tests
-- Write tests for custom exceptions and error handling
-- Implement custom exceptions and GlobalExceptionHandler
-- Create DTOs for request/response objects
+- Implement TransactionController
+- Implement transaction reference number generation
+- Implement insufficient funds validation
+- Implement authorization checks (users can only transact on their own accounts)
+
+#### Integration & Testing
 - Write integration tests with Testcontainers for user flows
 - Write integration tests with Testcontainers for account operations
 - Write integration tests with Testcontainers for transaction operations
+- Test all error scenarios from requirements document
+- Test authorization and forbidden access scenarios
+
+#### Documentation & Deployment
 - Create or update OpenAPI specification with all endpoints
+- Add Swagger annotations to all controllers
+- Update README with final API documentation
+- Create Postman collection for testing
 - Final testing and validation of all requirements
 
 ## Memories
