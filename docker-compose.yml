@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17.5-alpine
+    container_name: eaglebank-postgres
+    environment:
+      POSTGRES_DB: eaglebank
+      POSTGRES_USER: eaglebank
+      POSTGRES_PASSWORD: eaglebank123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - eaglebank-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eaglebank"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eaglebank-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/eaglebank
+      SPRING_DATASOURCE_USERNAME: eaglebank
+      SPRING_DATASOURCE_PASSWORD: eaglebank123
+      JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+    ports:
+      - "8080:8080"
+    networks:
+      - eaglebank-network
+
+networks:
+  eaglebank-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
