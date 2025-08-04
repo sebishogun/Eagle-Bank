@@ -23,7 +23,7 @@
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.7.0</springdoc.version>
         <testcontainers.version>1.20.4</testcontainers.version>
-        <commons-lang3.version>3.17.0</commons-lang3.version>
+        <commons-lang3.version>3.18.0</commons-lang3.version>
         <commons-compress.version>1.27.1</commons-compress.version>
         <uuid-creator.version>6.0.0</uuid-creator.version>
         <lombok.version>1.18.36</lombok.version>
