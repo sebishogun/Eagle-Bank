@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
-@Component
 public class MetricsTransactionDecorator extends TransactionDecorator {
     
     private final TransactionMetricsCollector metricsCollector;

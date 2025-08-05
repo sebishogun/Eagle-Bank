@@ -38,7 +38,7 @@ class StrategyPatternTest {
         testAccount = Account.builder()
                 .id(UuidGenerator.generateUuidV7())
                 .accountNumber("TEST123456")
-                .accountType("SAVINGS")
+                .accountType(Account.AccountType.SAVINGS)
                 .balance(new BigDecimal("1000"))
                 .status(Account.AccountStatus.ACTIVE)
                 .user(user)

@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Slf4j
-@Component
 public class NotificationTransactionDecorator extends TransactionDecorator {
     
     private static final BigDecimal LARGE_TRANSACTION_THRESHOLD = new BigDecimal("10000");

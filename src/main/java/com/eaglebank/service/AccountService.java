@@ -112,7 +112,7 @@ public class AccountService {
         return mapToResponse(account);
     }
 
-    @Cacheable(value = USER_ACCOUNTS_CACHE, key = "#userId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
+    @Cacheable(value = USER_ACCOUNTS_CACHE, key = "#userId + '_' + (#pageable != null ? #pageable.pageNumber + '_' + #pageable.pageSize : 'all')")
     @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
     public Page<AccountResponse> getUserAccounts(UUID userId, Pageable pageable) {
         Page<Account> accounts = accountRepository.findByUserId(userId, pageable);

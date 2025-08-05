@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Slf4j
-@Component
 public class LoggingTransactionDecorator extends TransactionDecorator {
     
     public LoggingTransactionDecorator(TransactionProcessor processor) {

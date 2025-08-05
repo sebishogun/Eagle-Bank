@@ -18,6 +18,7 @@ import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.TransactionRepository;
 import com.eaglebank.util.UuidGenerator;
+import com.eaglebank.metrics.TransactionMetricsCollector;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -45,6 +46,7 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionStrategyFactory strategyFactory;
     private final EventPublisher eventPublisher;
+    private final TransactionMetricsCollector metricsCollector;
     private static final DateTimeFormatter REFERENCE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     @Transactional
@@ -101,6 +103,13 @@ public class TransactionService {
                 savedTransaction.getBalanceAfter()
         );
         eventPublisher.publishEvent(event);
+        
+        // Record metrics
+        metricsCollector.recordTransaction(
+            savedTransaction.getType(),
+            savedTransaction.getAmount(),
+            0L // Processing time would need to be calculated
+        );
         
         log.info("Created {} transaction {} for account {} with amount {}", 
                 request.getTransactionType(), savedTransaction.getReferenceNumber(), 

@@ -31,6 +31,12 @@ public class MetricsController {
     public ResponseEntity<MetricsDto> getAllMetrics() {
         Map<String, Object> metrics = metricsService.getAllMetrics();
         
+        // Add cache statistics
+        Map<String, Object> cacheMetrics = new HashMap<>();
+        cacheMetrics.put("summary", cacheStatisticsService.getCacheSummary());
+        cacheMetrics.put("details", cacheStatisticsService.getAllCacheStatistics());
+        metrics.put("cache_statistics", cacheMetrics);
+        
         return ResponseEntity.ok(MetricsDto.builder()
                 .timestamp(LocalDateTime.now())
                 .metricType("all")

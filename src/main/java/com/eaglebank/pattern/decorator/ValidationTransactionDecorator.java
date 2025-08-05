@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Slf4j
-@Component
 public class ValidationTransactionDecorator extends TransactionDecorator {
     
     private final TransactionValidationChain validationChain;
