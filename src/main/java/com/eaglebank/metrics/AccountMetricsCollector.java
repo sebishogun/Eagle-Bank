@@ -1,6 +1,9 @@
 package com.eaglebank.metrics;
 
 import com.eaglebank.entity.Account;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -9,28 +12,60 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
 public class AccountMetricsCollector implements MetricsCollector {
     
-    private final Map<Account.AccountType, AtomicInteger> accountCounts = new ConcurrentHashMap<>();
-    private final Map<Account.AccountType, AtomicInteger> newAccounts = new ConcurrentHashMap<>();
-    private final Map<Account.AccountType, AtomicInteger> closedAccounts = new ConcurrentHashMap<>();
+    private final MeterRegistry meterRegistry;
+    private final Map<Account.AccountType, Counter> accountCreatedCounters = new ConcurrentHashMap<>();
+    private final Map<Account.AccountType, Counter> accountClosedCounters = new ConcurrentHashMap<>();
+    private final Map<Account.AccountType, AtomicLong> activeAccountGauges = new ConcurrentHashMap<>();
     private final AtomicLong totalBalance = new AtomicLong(0);
-    private final AtomicInteger totalAccounts = new AtomicInteger(0);
-    private final AtomicInteger activeAccounts = new AtomicInteger(0);
+    private final AtomicLong totalActiveAccounts = new AtomicLong(0);
     private LocalDateTime lastResetTime = LocalDateTime.now();
     
-    public AccountMetricsCollector() {
-        // Initialize counters
+    public AccountMetricsCollector(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        
+        // Initialize metrics for each account type
         for (Account.AccountType type : Account.AccountType.values()) {
-            accountCounts.put(type, new AtomicInteger(0));
-            newAccounts.put(type, new AtomicInteger(0));
-            closedAccounts.put(type, new AtomicInteger(0));
+            String typeName = type.name().toLowerCase();
+            
+            accountCreatedCounters.put(type, Counter.builder("accounts.created")
+                    .tag("type", typeName)
+                    .description("Number of accounts created by type")
+                    .register(meterRegistry));
+            
+            accountClosedCounters.put(type, Counter.builder("accounts.closed")
+                    .tag("type", typeName)
+                    .description("Number of accounts closed by type")
+                    .register(meterRegistry));
+            
+            AtomicLong activeGauge = new AtomicLong(0);
+            activeAccountGauges.put(type, activeGauge);
+            Gauge.builder("accounts.active", activeGauge, AtomicLong::get)
+                    .tag("type", typeName)
+                    .description("Number of active accounts by type")
+                    .register(meterRegistry);
         }
+        
+        // Register total gauges
+        Gauge.builder("accounts.balance.total", totalBalance, AtomicLong::get)
+                .description("Total balance across all accounts")
+                .baseUnit("currency")
+                .register(meterRegistry);
+        
+        Gauge.builder("accounts.active.total", totalActiveAccounts, AtomicLong::get)
+                .description("Total number of active accounts")
+                .register(meterRegistry);
+        
+        // Average balance gauge
+        Gauge.builder("accounts.balance.average", this, AccountMetricsCollector::calculateAverageBalance)
+                .description("Average account balance")
+                .baseUnit("currency")
+                .register(meterRegistry);
     }
     
     @Override
@@ -42,21 +77,32 @@ public class AccountMetricsCollector implements MetricsCollector {
     public Map<String, Object> collect() {
         Map<String, Object> metrics = new HashMap<>();
         
-        // Basic metrics
-        metrics.put("total_accounts", totalAccounts.get());
-        metrics.put("active_accounts", activeAccounts.get());
-        metrics.put("total_balance", totalBalance.get());
-        metrics.put("average_balance", calculateAverageBalance());
+        // Calculate totals
+        long totalCreated = 0;
+        long totalClosed = 0;
+        long totalActive = totalActiveAccounts.get();
         
-        // Account type breakdown
         Map<String, Object> byType = new HashMap<>();
         for (Account.AccountType type : Account.AccountType.values()) {
+            String typeName = type.name().toLowerCase();
+            long created = (long) accountCreatedCounters.get(type).count();
+            long closed = (long) accountClosedCounters.get(type).count();
+            long active = activeAccountGauges.get(type).get();
+            
+            totalCreated += created;
+            totalClosed += closed;
+            
             Map<String, Object> typeMetrics = new HashMap<>();
-            typeMetrics.put("count", accountCounts.get(type).get());
-            typeMetrics.put("new_accounts", newAccounts.get(type).get());
-            typeMetrics.put("closed_accounts", closedAccounts.get(type).get());
-            byType.put(type.name().toLowerCase(), typeMetrics);
+            typeMetrics.put("count", active);
+            typeMetrics.put("new_accounts", created);
+            typeMetrics.put("closed_accounts", closed);
+            byType.put(typeName, typeMetrics);
         }
+        
+        metrics.put("total_accounts", totalActive);
+        metrics.put("active_accounts", totalActive);
+        metrics.put("total_balance", totalBalance.get());
+        metrics.put("average_balance", calculateAverageBalance());
         metrics.put("by_type", byType);
         
         // Time-based metrics
@@ -71,28 +117,31 @@ public class AccountMetricsCollector implements MetricsCollector {
     
     @Override
     public void reset() {
-        newAccounts.values().forEach(counter -> counter.set(0));
-        closedAccounts.values().forEach(counter -> counter.set(0));
+        // Note: Prometheus counters are cumulative and cannot be reset
         lastResetTime = LocalDateTime.now();
-        log.info("Account metrics partially reset (new/closed accounts)");
+        log.info("Account metrics reset timestamp updated - Note: Prometheus counters are cumulative");
     }
     
     public void recordAccountCreated(Account.AccountType type, BigDecimal initialBalance) {
-        accountCounts.get(type).incrementAndGet();
-        newAccounts.get(type).incrementAndGet();
-        totalAccounts.incrementAndGet();
-        activeAccounts.incrementAndGet();
+        accountCreatedCounters.get(type).increment();
+        activeAccountGauges.get(type).incrementAndGet();
+        totalActiveAccounts.incrementAndGet();
         totalBalance.addAndGet(initialBalance.longValue());
+        
+        // Also record total counter
+        meterRegistry.counter("accounts.created.total").increment();
         
         log.debug("Recorded new {} account with balance {}", type, initialBalance);
     }
     
     public void recordAccountClosed(Account.AccountType type, BigDecimal finalBalance) {
-        accountCounts.get(type).decrementAndGet();
-        closedAccounts.get(type).incrementAndGet();
-        totalAccounts.decrementAndGet();
-        activeAccounts.decrementAndGet();
+        accountClosedCounters.get(type).increment();
+        activeAccountGauges.get(type).decrementAndGet();
+        totalActiveAccounts.decrementAndGet();
         totalBalance.addAndGet(-finalBalance.longValue());
+        
+        // Also record total counter
+        meterRegistry.counter("accounts.closed.total").increment();
         
         log.debug("Recorded closed {} account with balance {}", type, finalBalance);
     }
@@ -104,14 +153,14 @@ public class AccountMetricsCollector implements MetricsCollector {
     
     public void updateAccountStatus(boolean wasActive, boolean isActive) {
         if (wasActive && !isActive) {
-            activeAccounts.decrementAndGet();
+            totalActiveAccounts.decrementAndGet();
         } else if (!wasActive && isActive) {
-            activeAccounts.incrementAndGet();
+            totalActiveAccounts.incrementAndGet();
         }
     }
     
     private double calculateAverageBalance() {
-        int total = totalAccounts.get();
+        long total = totalActiveAccounts.get();
         if (total == 0) return 0.0;
         return (double) totalBalance.get() / total;
     }

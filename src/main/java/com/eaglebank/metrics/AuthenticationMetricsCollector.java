@@ -1,5 +1,6 @@
 package com.eaglebank.metrics;
 
+import io.micrometer.core.instrument.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -9,23 +10,72 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Component
 public class AuthenticationMetricsCollector implements MetricsCollector {
     
-    private final AtomicInteger successfulLogins = new AtomicInteger(0);
-    private final AtomicInteger failedLogins = new AtomicInteger(0);
-    private final AtomicInteger activeSessions = new AtomicInteger(0);
+    private final MeterRegistry meterRegistry;
+    private final Counter successfulLogins;
+    private final Counter failedLogins;
+    private final AtomicLong activeSessionsGauge = new AtomicLong(0);
     private final ConcurrentHashMap<String, AtomicInteger> failedLoginsByUser = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<LoginAttempt> recentLoginAttempts = new ConcurrentLinkedQueue<>();
     private final Map<MetricWindow, WindowedAuthMetrics> windowMetrics = new ConcurrentHashMap<>();
+    private LocalDateTime lastResetTime = LocalDateTime.now();
     
-    public AuthenticationMetricsCollector() {
+    public AuthenticationMetricsCollector(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        
+        // Initialize counters
+        this.successfulLogins = Counter.builder("authentication.logins.successful")
+                .description("Number of successful login attempts")
+                .register(meterRegistry);
+        
+        this.failedLogins = Counter.builder("authentication.logins.failed")
+                .description("Number of failed login attempts")
+                .register(meterRegistry);
+        
+        // Active sessions gauge
+        Gauge.builder("authentication.sessions.active", activeSessionsGauge, AtomicLong::get)
+                .description("Number of active sessions")
+                .register(meterRegistry);
+        
+        // Success rate gauge
+        Gauge.builder("authentication.logins.success.rate", this, AuthenticationMetricsCollector::calculateSuccessRate)
+                .description("Login success rate percentage")
+                .baseUnit("percent")
+                .register(meterRegistry);
+        
         // Initialize time windows
         for (MetricWindow window : MetricWindow.values()) {
             windowMetrics.put(window, new WindowedAuthMetrics(window));
+            
+            // Create gauges for window metrics
+            String windowName = window.name().toLowerCase();
+            WindowedAuthMetrics windowMetric = windowMetrics.get(window);
+            
+            Gauge.builder("authentication.window.successful", windowMetric, wm -> wm.getSuccessfulCount())
+                    .tag("window", windowName)
+                    .description("Successful logins in time window")
+                    .register(meterRegistry);
+            
+            Gauge.builder("authentication.window.failed", windowMetric, wm -> wm.getFailedCount())
+                    .tag("window", windowName)
+                    .description("Failed logins in time window")
+                    .register(meterRegistry);
+            
+            Gauge.builder("authentication.window.rate", windowMetric, wm -> wm.getRate())
+                    .tag("window", windowName)
+                    .description("Login attempts per minute in time window")
+                    .register(meterRegistry);
         }
+        
+        // Unique failed users gauge
+        Gauge.builder("authentication.failed.unique.users", failedLoginsByUser, Map::size)
+                .description("Number of unique users with failed login attempts")
+                .register(meterRegistry);
     }
     
     @Override
@@ -38,15 +88,17 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
         Map<String, Object> metrics = new HashMap<>();
         
         // Basic counts
-        metrics.put("successful_logins", successfulLogins.get());
-        metrics.put("failed_logins", failedLogins.get());
-        metrics.put("active_sessions", activeSessions.get());
-        metrics.put("total_attempts", successfulLogins.get() + failedLogins.get());
+        double successful = successfulLogins.count();
+        double failed = failedLogins.count();
+        long active = activeSessionsGauge.get();
+        
+        metrics.put("successful_logins", (long) successful);
+        metrics.put("failed_logins", (long) failed);
+        metrics.put("active_sessions", active);
+        metrics.put("total_attempts", (long) (successful + failed));
         
         // Success rate
-        int total = successfulLogins.get() + failedLogins.get();
-        double successRate = total > 0 ? (double) successfulLogins.get() / total * 100 : 0;
-        metrics.put("success_rate_percent", String.format("%.2f", successRate));
+        metrics.put("success_rate_percent", String.format("%.2f", calculateSuccessRate()));
         
         // Failed login analysis
         Map<String, Object> failedAnalysis = new HashMap<>();
@@ -69,22 +121,32 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
         }
         metrics.put("time_windows", windows);
         
+        // Time info
+        Map<String, Object> timeInfo = new HashMap<>();
+        timeInfo.put("last_reset", lastResetTime.toString());
+        timeInfo.put("collection_period_hours", 
+            java.time.Duration.between(lastResetTime, LocalDateTime.now()).toHours());
+        metrics.put("time_info", timeInfo);
+        
         return metrics;
     }
     
     @Override
     public void reset() {
-        successfulLogins.set(0);
-        failedLogins.set(0);
+        // Note: Prometheus counters are cumulative and cannot be reset
         failedLoginsByUser.clear();
         recentLoginAttempts.clear();
         windowMetrics.values().forEach(WindowedAuthMetrics::reset);
-        log.info("Authentication metrics reset");
+        lastResetTime = LocalDateTime.now();
+        log.info("Authentication metrics reset timestamp updated - Note: Prometheus counters are cumulative");
     }
     
     public void recordSuccessfulLogin(String username, String ipAddress) {
-        successfulLogins.incrementAndGet();
-        activeSessions.incrementAndGet();
+        successfulLogins.increment();
+        activeSessionsGauge.incrementAndGet();
+        
+        // Record by IP counter
+        meterRegistry.counter("authentication.logins.by.ip", "ip", ipAddress, "result", "success").increment();
         
         LoginAttempt attempt = new LoginAttempt(username, ipAddress, true, LocalDateTime.now());
         recordLoginAttempt(attempt);
@@ -93,8 +155,11 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
     }
     
     public void recordFailedLogin(String username, String ipAddress) {
-        failedLogins.incrementAndGet();
+        failedLogins.increment();
         failedLoginsByUser.computeIfAbsent(username, k -> new AtomicInteger(0)).incrementAndGet();
+        
+        // Record by IP counter
+        meterRegistry.counter("authentication.logins.by.ip", "ip", ipAddress, "result", "failed").increment();
         
         LoginAttempt attempt = new LoginAttempt(username, ipAddress, false, LocalDateTime.now());
         recordLoginAttempt(attempt);
@@ -103,11 +168,13 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
     }
     
     public void recordLogout() {
-        activeSessions.decrementAndGet();
+        activeSessionsGauge.decrementAndGet();
+        meterRegistry.counter("authentication.logouts").increment();
     }
     
     public void recordSessionExpired() {
-        activeSessions.decrementAndGet();
+        activeSessionsGauge.decrementAndGet();
+        meterRegistry.counter("authentication.sessions.expired").increment();
     }
     
     private void recordLoginAttempt(LoginAttempt attempt) {
@@ -118,6 +185,13 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
         
         // Update time windows
         windowMetrics.values().forEach(window -> window.record(attempt));
+    }
+    
+    private double calculateSuccessRate() {
+        double successful = successfulLogins.count();
+        double failed = failedLogins.count();
+        double total = successful + failed;
+        return total > 0 ? (successful / total * 100) : 0;
     }
     
     private static class LoginAttempt {
@@ -150,11 +224,23 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
             attempts.removeIf(a -> a.timestamp.isBefore(cutoff));
         }
         
+        long getSuccessfulCount() {
+            return attempts.stream().filter(a -> a.successful).count();
+        }
+        
+        long getFailedCount() {
+            return attempts.stream().filter(a -> !a.successful).count();
+        }
+        
+        double getRate() {
+            return (double) attempts.size() / (window.getSeconds() / 60.0);
+        }
+        
         Map<String, Object> getMetrics() {
             Map<String, Object> metrics = new HashMap<>();
             
-            long successful = attempts.stream().filter(a -> a.successful).count();
-            long failed = attempts.stream().filter(a -> !a.successful).count();
+            long successful = getSuccessfulCount();
+            long failed = getFailedCount();
             long total = attempts.size();
             
             metrics.put("successful", successful);
@@ -163,7 +249,7 @@ public class AuthenticationMetricsCollector implements MetricsCollector {
             
             if (total > 0) {
                 metrics.put("success_rate", String.format("%.2f", (double) successful / total * 100));
-                metrics.put("rate_per_minute", (double) total / (window.getSeconds() / 60.0));
+                metrics.put("rate_per_minute", getRate());
                 
                 // Unique IPs
                 long uniqueIps = attempts.stream()

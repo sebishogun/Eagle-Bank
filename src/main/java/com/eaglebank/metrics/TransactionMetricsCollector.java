@@ -1,41 +1,58 @@
 package com.eaglebank.metrics;
 
 import com.eaglebank.entity.Transaction;
+import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.distribution.HistogramSnapshot;
+import io.micrometer.core.instrument.distribution.ValueAtPercentile;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
 public class TransactionMetricsCollector implements MetricsCollector {
     
-    private final Map<Transaction.TransactionType, AtomicInteger> transactionCounts = new ConcurrentHashMap<>();
-    private final Map<Transaction.TransactionType, AtomicLong> transactionVolumes = new ConcurrentHashMap<>();
-    private final ConcurrentLinkedQueue<Long> processingTimes = new ConcurrentLinkedQueue<>();
-    private final Map<MetricWindow, TimeWindowMetrics> windowMetrics = new ConcurrentHashMap<>();
-    private final AtomicInteger totalTransactions = new AtomicInteger(0);
-    private final AtomicLong totalVolume = new AtomicLong(0);
+    private final MeterRegistry meterRegistry;
+    private final Map<Transaction.TransactionType, Counter> transactionCounters = new ConcurrentHashMap<>();
+    private final Map<Transaction.TransactionType, Counter> volumeCounters = new ConcurrentHashMap<>();
+    private final Timer processingTimer;
     
-    public TransactionMetricsCollector() {
-        // Initialize counters
+    // Keep track for collect() method compatibility
+    private final Map<String, Double> lastKnownValues = new ConcurrentHashMap<>();
+    
+    public TransactionMetricsCollector(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        
+        // Initialize counters for each transaction type
         for (Transaction.TransactionType type : Transaction.TransactionType.values()) {
-            transactionCounts.put(type, new AtomicInteger(0));
-            transactionVolumes.put(type, new AtomicLong(0));
+            String typeName = type.name().toLowerCase();
+            
+            transactionCounters.put(type, Counter.builder("transactions.count")
+                    .tag("type", typeName)
+                    .description("Number of transactions by type")
+                    .register(meterRegistry));
+            
+            volumeCounters.put(type, Counter.builder("transactions.volume")
+                    .tag("type", typeName)
+                    .description("Volume of transactions by type")
+                    .baseUnit("currency")
+                    .register(meterRegistry));
         }
         
-        // Initialize time windows
-        for (MetricWindow window : MetricWindow.values()) {
-            windowMetrics.put(window, new TimeWindowMetrics(window));
-        }
+        // Initialize processing time timer
+        this.processingTimer = Timer.builder("transactions.processing.time")
+                .description("Transaction processing time")
+                .publishPercentiles(0.5, 0.95, 0.99)
+                .publishPercentileHistogram()
+                .minimumExpectedValue(Duration.ofMillis(1))
+                .maximumExpectedValue(Duration.ofSeconds(5))
+                .register(meterRegistry);
     }
     
     @Override
@@ -47,172 +64,86 @@ public class TransactionMetricsCollector implements MetricsCollector {
     public Map<String, Object> collect() {
         Map<String, Object> metrics = new HashMap<>();
         
-        // Basic counts
-        metrics.put("total_transactions", totalTransactions.get());
-        metrics.put("total_volume", totalVolume.get());
+        // Calculate total transactions from all counters
+        double totalTransactions = 0;
+        double totalVolume = 0;
         
-        // Type-specific metrics
         Map<String, Object> byType = new HashMap<>();
         for (Transaction.TransactionType type : Transaction.TransactionType.values()) {
+            String typeName = type.name().toLowerCase();
+            double count = transactionCounters.get(type).count();
+            double volume = volumeCounters.get(type).count();
+            
+            totalTransactions += count;
+            totalVolume += volume;
+            
             Map<String, Object> typeMetrics = new HashMap<>();
-            typeMetrics.put("count", transactionCounts.get(type).get());
-            typeMetrics.put("volume", transactionVolumes.get(type).get());
-            byType.put(type.name().toLowerCase(), typeMetrics);
+            typeMetrics.put("count", (long) count);
+            typeMetrics.put("volume", (long) volume);
+            byType.put(typeName, typeMetrics);
         }
+        
+        metrics.put("total_transactions", (long) totalTransactions);
+        metrics.put("total_volume", (long) totalVolume);
         metrics.put("by_type", byType);
         
-        // Processing time metrics
-        metrics.put("processing_times", calculateProcessingTimeStats());
+        // Processing time metrics from timer
+        HistogramSnapshot snapshot = processingTimer.takeSnapshot();
         
-        // Time window metrics
-        Map<String, Object> windows = new HashMap<>();
-        for (Map.Entry<MetricWindow, TimeWindowMetrics> entry : windowMetrics.entrySet()) {
-            windows.put(entry.getKey().name().toLowerCase(), entry.getValue().getMetrics());
+        Map<String, Object> processingTimes = new HashMap<>();
+        processingTimes.put("count", snapshot.count());
+        // Note: HistogramSnapshot doesn't have min(), using 0 as placeholder
+        processingTimes.put("min", 0L);
+        processingTimes.put("max", (long) snapshot.max(TimeUnit.MILLISECONDS));
+        processingTimes.put("avg", snapshot.mean(TimeUnit.MILLISECONDS));
+        
+        // Get percentiles if available
+        if (snapshot.percentileValues().length > 0) {
+            processingTimes.put("p50", getPercentileValue(snapshot, 0.5));
+            processingTimes.put("p95", getPercentileValue(snapshot, 0.95));
+            processingTimes.put("p99", getPercentileValue(snapshot, 0.99));
         }
-        metrics.put("time_windows", windows);
+        
+        metrics.put("processing_times", processingTimes);
+        
+        // Store values for potential future use
+        lastKnownValues.put("total_transactions", totalTransactions);
+        lastKnownValues.put("total_volume", totalVolume);
         
         return metrics;
     }
     
     @Override
     public void reset() {
-        transactionCounts.values().forEach(counter -> counter.set(0));
-        transactionVolumes.values().forEach(counter -> counter.set(0));
-        processingTimes.clear();
-        windowMetrics.values().forEach(TimeWindowMetrics::reset);
-        totalTransactions.set(0);
-        totalVolume.set(0);
-        log.info("Transaction metrics reset");
+        // Micrometer counters cannot be reset, but we can log the action
+        log.info("Transaction metrics reset requested - Note: Prometheus counters are cumulative and cannot be reset");
     }
     
     public void recordTransaction(Transaction.TransactionType type, BigDecimal amount, long processingTimeMs) {
-        // Update counters
-        transactionCounts.get(type).incrementAndGet();
-        transactionVolumes.get(type).addAndGet(amount.longValue());
-        totalTransactions.incrementAndGet();
-        totalVolume.addAndGet(amount.longValue());
+        // Increment counters
+        transactionCounters.get(type).increment();
+        volumeCounters.get(type).increment(amount.doubleValue());
+        
+        // Record total counters
+        meterRegistry.counter("transactions.total").increment();
+        meterRegistry.counter("transactions.volume.total").increment(amount.doubleValue());
         
         // Record processing time
-        processingTimes.offer(processingTimeMs);
-        if (processingTimes.size() > 10000) {
-            processingTimes.poll(); // Keep only recent 10k samples
-        }
+        processingTimer.record(processingTimeMs, TimeUnit.MILLISECONDS);
         
-        // Update time windows
-        windowMetrics.values().forEach(window -> 
-            window.record(type, amount, processingTimeMs)
-        );
+        // Also record as a gauge for current window monitoring
+        meterRegistry.gauge("transactions.last.processing.time", processingTimeMs);
+        
+        log.debug("Recorded {} transaction: amount={}, processingTime={}ms", 
+                type, amount, processingTimeMs);
     }
     
-    private Map<String, Object> calculateProcessingTimeStats() {
-        Map<String, Object> stats = new HashMap<>();
-        
-        List<Long> times = new ArrayList<>(processingTimes);
-        if (times.isEmpty()) {
-            stats.put("count", 0);
-            return stats;
-        }
-        
-        Collections.sort(times);
-        
-        stats.put("count", times.size());
-        stats.put("min", times.get(0));
-        stats.put("max", times.get(times.size() - 1));
-        stats.put("avg", times.stream().mapToLong(Long::longValue).average().orElse(0.0));
-        stats.put("p50", getPercentile(times, 50));
-        stats.put("p95", getPercentile(times, 95));
-        stats.put("p99", getPercentile(times, 99));
-        
-        return stats;
-    }
-    
-    private long getPercentile(List<Long> sortedValues, int percentile) {
-        if (sortedValues.isEmpty()) return 0;
-        int index = (int) Math.ceil(sortedValues.size() * percentile / 100.0) - 1;
-        return sortedValues.get(Math.max(0, Math.min(index, sortedValues.size() - 1)));
-    }
-    
-    private static class TimeWindowMetrics {
-        private final MetricWindow window;
-        private final ConcurrentLinkedQueue<TimedTransaction> transactions = new ConcurrentLinkedQueue<>();
-        
-        TimeWindowMetrics(MetricWindow window) {
-            this.window = window;
-        }
-        
-        void record(Transaction.TransactionType type, BigDecimal amount, long processingTimeMs) {
-            // Add new transaction
-            transactions.offer(new TimedTransaction(
-                LocalDateTime.now(),
-                type,
-                amount,
-                processingTimeMs
-            ));
-            
-            // Remove old transactions outside window
-            LocalDateTime cutoff = LocalDateTime.now().minusSeconds(window.getSeconds());
-            transactions.removeIf(t -> t.timestamp.isBefore(cutoff));
-        }
-        
-        Map<String, Object> getMetrics() {
-            Map<String, Object> metrics = new HashMap<>();
-            
-            List<TimedTransaction> current = new ArrayList<>(transactions);
-            metrics.put("transaction_count", current.size());
-            
-            if (!current.isEmpty()) {
-                // Calculate rate
-                double ratePerSecond = current.size() / (double) window.getSeconds();
-                metrics.put("rate_per_second", ratePerSecond);
-                
-                // Calculate volume
-                BigDecimal totalVolume = current.stream()
-                    .map(t -> t.amount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-                metrics.put("total_volume", totalVolume);
-                
-                // Type breakdown
-                Map<String, Long> typeCount = current.stream()
-                    .collect(Collectors.groupingBy(
-                        t -> t.type.name().toLowerCase(),
-                        Collectors.counting()
-                    ));
-                metrics.put("by_type", typeCount);
-                
-                // Processing time stats
-                List<Long> times = current.stream()
-                    .map(t -> t.processingTimeMs)
-                    .sorted()
-                    .collect(Collectors.toList());
-                
-                if (!times.isEmpty()) {
-                    Map<String, Object> timeStats = new HashMap<>();
-                    timeStats.put("avg", times.stream().mapToLong(Long::longValue).average().orElse(0.0));
-                    timeStats.put("p95", times.get((int) (times.size() * 0.95)));
-                    metrics.put("processing_times", timeStats);
-                }
-            }
-            
-            return metrics;
-        }
-        
-        void reset() {
-            transactions.clear();
-        }
-        
-        private static class TimedTransaction {
-            final LocalDateTime timestamp;
-            final Transaction.TransactionType type;
-            final BigDecimal amount;
-            final long processingTimeMs;
-            
-            TimedTransaction(LocalDateTime timestamp, Transaction.TransactionType type, 
-                           BigDecimal amount, long processingTimeMs) {
-                this.timestamp = timestamp;
-                this.type = type;
-                this.amount = amount;
-                this.processingTimeMs = processingTimeMs;
+    private double getPercentileValue(HistogramSnapshot snapshot, double percentile) {
+        for (ValueAtPercentile vap : snapshot.percentileValues()) {
+            if (Math.abs(vap.percentile() - percentile) < 0.01) {
+                return vap.value(TimeUnit.MILLISECONDS);
             }
         }
+        return 0.0;
     }
 }
