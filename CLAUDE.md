@@ -88,23 +88,12 @@ Standard HTTP status codes:
 ## Maven Commands
 
 ```bash
-# Clean and build
-./mvnw clean package
-
-# Run the application
-./mvnw spring-boot:run
-
-# Run tests
-./mvnw test
-
-# Run specific test class
-./mvnw test -Dtest=UserControllerTest
-
-# Skip tests during build
-./mvnw clean package -DskipTests
-
-# Generate test coverage report (if JaCoCo is configured)
-./mvnw clean test jacoco:report
+mvn clean package
+mvn spring-boot:run
+mvn test
+mvn test -Dtest=UserControllerTest
+mvn clean package -DskipTests
+mvn clean test jacoco:report
 ```
 
 ## Project Structure
@@ -390,61 +379,52 @@ Each feature should be developed using TDD:
 
 ## Development Progress
 
-### ✅ Completed Tasks
-1. ✅ Initialize Spring Boot project with Java 21 and Maven
-2. ✅ Update pom.xml with PostgreSQL, UUID libraries, and Testcontainers
-3. ✅ Create Docker Compose file for PostgreSQL 17
-4. ✅ Configure application profiles (dev with PostgreSQL, test with H2)
-5. ✅ Implement UUID v7 generator for entity IDs
-6. ✅ Implement UUID v4 generator for random tokens
-7. ✅ Create JPA entity classes (User, Account, Transaction) with UUID
-8. ✅ Create repository interfaces for all entities
-9. ✅ Write tests for UserService create and fetch operations
-10. ✅ Implement UserService to pass tests
-11. ✅ Write tests for UserController POST and GET endpoints
-12. ✅ Implement UserController to pass tests
-13. ✅ Write tests for JWT authentication and security
-14. ✅ Implement JWT security configuration and token provider
-15. ✅ Write tests for AuthService and AuthController
-16. ✅ Implement AuthService and AuthController for login
-17. ✅ Create custom exceptions and GlobalExceptionHandler
-18. ✅ Create DTOs for request/response objects (User and Auth DTOs)
-19. ✅ Fix deprecated DaoAuthenticationProvider methods (Spring Security 6.3+)
-20. ✅ Configure Maven compiler plugin for Lombok annotation processing
-21. ✅ Create Account DTOs (CreateAccountRequest, UpdateAccountRequest, AccountResponse)
-22. ✅ Write comprehensive tests for AccountService CRUD operations
-23. ✅ Implement AccountService with business logic and authorization
-24. ✅ Write tests for AccountController endpoints
-25. ✅ Implement AccountController with REST endpoints
-26. ✅ Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
-27. ✅ Implement InsufficientFundsException for transaction validation
-28. ✅ Write tests for TransactionService deposit/withdrawal logic
-29. ✅ Implement TransactionService with balance validation
-30. ✅ Write tests for TransactionController endpoints
-31. ✅ Implement TransactionController
-32. ✅ Implement transaction reference number generation
-33. ✅ Implement insufficient funds validation
-34. ✅ Implement authorization checks for transactions
-35. ✅ Create UpdateUserRequest DTO for user updates
-36. ✅ Add countByUserId to AccountRepository for user deletion validation
-37. ✅ Implement UserService updateUser and deleteUser methods
-38. ✅ Add PATCH and DELETE endpoints to UserController
-39. ✅ Write comprehensive integration tests for user update/delete operations
-40. ✅ Implement authorization checks (users can only modify their own data)
-41. ✅ Implement business rule: cannot delete user with existing accounts
-42. ✅ Create meaningful integration tests that validate real behavior
-
-### 🚧 In Progress
-- None currently
-
-### 📋 Pending Tasks (Priority Order)
-
-#### Documentation & Deployment
-- Create or update OpenAPI specification with all endpoints
-- Add Swagger UI integration to the project
-- Update README with final API documentation
-- Create Postman collection for testing (optional)
-- Final testing and validation of all requirements
+### Completed Tasks
+1. Initialize Spring Boot project with Java 21 and Maven
+2. Update pom.xml with PostgreSQL, UUID libraries, and Testcontainers
+3. Create Docker Compose file for PostgreSQL 17
+4. Configure application profiles (dev with PostgreSQL, test with H2)
+5. Implement UUID v7 generator for entity IDs
+6. Implement UUID v4 generator for random tokens
+7. Create JPA entity classes (User, Account, Transaction) with UUID
+8. Create repository interfaces for all entities
+9. Write tests for UserService create and fetch operations
+10. Implement UserService to pass tests
+11. Write tests for UserController POST and GET endpoints
+12. Implement UserController to pass tests
+13. Write tests for JWT authentication and security
+14. Implement JWT security configuration and token provider
+15. Write tests for AuthService and AuthController
+16. Implement AuthService and AuthController for login
+17. Create custom exceptions and GlobalExceptionHandler
+18. Create DTOs for request/response objects (User and Auth DTOs)
+19. Fix deprecated DaoAuthenticationProvider methods (Spring Security 6.3+)
+20. Configure Maven compiler plugin for Lombok annotation processing
+21. Create Account DTOs (CreateAccountRequest, UpdateAccountRequest, AccountResponse)
+22. Write comprehensive tests for AccountService CRUD operations
+23. Implement AccountService with business logic and authorization
+24. Write tests for AccountController endpoints
+25. Implement AccountController with REST endpoints
+26. Create Transaction DTOs (CreateTransactionRequest, TransactionResponse)
+27. Implement InsufficientFundsException for transaction validation
+28. Write tests for TransactionService deposit/withdrawal logic
+29. Implement TransactionService with balance validation
+30. Write tests for TransactionController endpoints
+31. Implement TransactionController
+32. Implement transaction reference number generation
+33. Implement insufficient funds validation
+34. Implement authorization checks for transactions
+35. Create UpdateUserRequest DTO for user updates
+36. Add countByUserId to AccountRepository for user deletion validation
+37. Implement UserService updateUser and deleteUser methods
+38. Add PATCH and DELETE endpoints to UserController
+39. Write comprehensive integration tests for user update/delete operations
+40. Implement authorization checks (users can only modify their own data)
+41. Implement business rule: cannot delete user with existing accounts
+42. Create meaningful integration tests that validate real behavior
+43. Add comprehensive OpenAPI annotations to all controllers
+44. Configure OpenAPI security scheme
+45. Create Postman collection for API testing
 
 ## Memories
 

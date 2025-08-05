@@ -1,26 +1,16 @@
 # Eagle Bank REST API
 
-REST API for Eagle Bank - a fictional banking system that allows users to manage accounts and perform transactions.
+REST API for Eagle Bank - a banking system that allows users to manage accounts and perform transactions.
+
+## Functionality
+
+The API provides comprehensive banking operations including user registration and authentication, bank account management (checking and savings), and transaction processing (deposits and withdrawals). Key features include JWT-based authentication, role-based access control, transaction history tracking, balance validation for withdrawals, and proper authorization ensuring users can only access their own data. The system supports paginated queries, comprehensive error handling, and includes administrative endpoints for metrics and monitoring.
 
 ## API Documentation
 
-### 🚀 Swagger UI - Interactive API Documentation
+Access Swagger UI at: http://localhost:8080/api/swagger-ui.html
 
-Once the application is running, access the interactive API documentation at:
-
-**http://localhost:8080/api/swagger-ui.html**
-
-Features:
-- Browse all available endpoints
-- View request/response schemas
-- Try out API calls directly from the browser
-- Automatic JWT token handling
-
-### OpenAPI Specification
-
-The OpenAPI 3.0 specification (JSON format) is available at:
-
-**http://localhost:8080/api/v3/api-docs**
+OpenAPI specification: http://localhost:8080/api/v3/api-docs
 
 ## Technology Stack
 
@@ -44,25 +34,17 @@ The OpenAPI 3.0 specification (JSON format) is available at:
 docker compose up --build -d 
 ```
 
-The API will be available at: `http://localhost:8080/api`
+API available at: http://localhost:8080/api
 
 ## Running Tests
 
 ```bash
-# Run all tests
-./mvnw test
-
-# Run with coverage
-./mvnw clean test jacoco:report
+mvn test
+mvn clean test jacoco:report
 ```
-
-## API Documentation
-
-When running, access Swagger UI at: `http://localhost:8080/api/swagger-ui.html`
 
 ## Authentication
 
-All endpoints except user creation require JWT authentication:
-1. Create user via `POST /v1/users`
-2. Login via `POST /v1/auth/login` to receive JWT token
-3. Include token in Authorization header: `Bearer <token>`
+1. Create user: POST /v1/users
+2. Login: POST /v1/auth/login
+3. Use token in Authorization header: Bearer <token>
