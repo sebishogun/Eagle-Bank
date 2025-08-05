@@ -79,8 +79,8 @@ public class SecurityConfig {
                 // API documentation
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/webjars/**", "/swagger-resources/**").permitAll()
-                // Health checks
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                // Health checks and metrics
+                .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
                 // Everything else requires authentication
                 .anyRequest().authenticated()
             )

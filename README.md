@@ -48,3 +48,40 @@ mvn clean test jacoco:report
 1. Create user: POST /v1/users
 2. Login: POST /v1/auth/login
 3. Use token in Authorization header: Bearer <token>
+
+## Monitoring
+
+The application includes comprehensive monitoring using Prometheus and Grafana.
+
+### Access Points
+- **Application**: http://localhost:8080/api
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+
+### Metrics Architecture
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
+│  Eagle Bank API │────▶│  Prometheus  │────▶│   Grafana   │
+│  (Micrometer)   │     │  (Scraping)  │     │ (Dashboards)│
+└─────────────────┘     └──────────────┘     └─────────────┘
+        │                                              │
+        └── /actuator/prometheus ──────────────────────┘
+```
+
+### Available Metrics
+- **Business Metrics**: Transaction counts/volume, account statistics, authentication metrics
+- **System Metrics**: JVM memory, CPU usage, HTTP request rates
+- **Custom Dashboards**: Pre-configured Eagle Bank dashboard with real-time visualization
+
+### Prometheus Queries Examples
+```promql
+# Transaction rate by type
+rate(transactions_count_total[5m])
+
+# Login success rate
+authentication_logins_success_rate
+
+# Active accounts by type  
+accounts_active
+```

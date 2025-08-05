@@ -425,6 +425,127 @@ Each feature should be developed using TDD:
 43. Add comprehensive OpenAPI annotations to all controllers
 44. Configure OpenAPI security scheme
 45. Create Postman collection for API testing
+46. Migrate to Prometheus using Micrometer
+47. Add Spring Boot Actuator and Micrometer dependencies
+48. Create MicrometerConfig for Prometheus configuration
+49. Update all MetricsCollectors to use Micrometer
+50. Add actuator configuration to application.yml
+51. Update metrics tests for Micrometer compatibility
+52. Add Prometheus and Grafana to Docker Compose
+53. Create Prometheus scraping configuration
+54. Create Grafana datasource and dashboard provisioning
+55. Create comprehensive Eagle Bank monitoring dashboard
+
+## Prometheus and Grafana Monitoring Plan
+
+### Overview
+Add comprehensive monitoring to Eagle Bank API using Prometheus for metrics collection and Grafana for visualization. This will provide real-time insights into application performance, business metrics, and system health.
+
+### Implementation Tasks
+
+#### 1. Update Docker Compose Configuration
+- Add Prometheus service (port 9090) to scrape metrics from Eagle Bank API
+- Add Grafana service (port 3000) with automatic provisioning
+- Configure networking between services
+- Add persistent volumes for data retention
+
+#### 2. Create Prometheus Configuration
+**File**: `monitoring/prometheus/prometheus.yml`
+- Configure scrape interval (15 seconds)
+- Set up job for Eagle Bank API targeting `/api/actuator/prometheus`
+- Configure service discovery for dynamic container environments
+
+#### 3. Create Grafana Configuration
+**Datasource**: `monitoring/grafana/provisioning/datasources/prometheus.yml`
+- Auto-configure Prometheus as default datasource
+- Set up proper URL and access mode
+
+**Dashboard Provisioning**: `monitoring/grafana/provisioning/dashboards/dashboard.yml`
+- Configure dashboard auto-provisioning
+- Set folder structure and permissions
+
+**Custom Dashboard**: `monitoring/grafana/dashboards/eagle-bank-dashboard.json`
+- Transaction Metrics Panel:
+  - Transaction count by type (deposit/withdrawal)
+  - Transaction volume in currency
+  - Processing time percentiles (p50, p95, p99)
+  - Transaction rate per minute
+- Account Metrics Panel:
+  - Active accounts by type
+  - Total balance across all accounts
+  - Account creation/closure rates
+  - Average account balance
+- Authentication Metrics Panel:
+  - Login success/failure rates
+  - Active sessions gauge
+  - Failed login attempts by user
+  - Login attempts by time window
+- JVM/System Metrics Panel:
+  - Memory usage (heap/non-heap)
+  - CPU utilization
+  - Thread count
+  - HTTP request rates and latencies
+
+#### 4. Update Documentation
+**README.md additions**:
+- Monitoring section with access URLs
+- Grafana default credentials (admin/admin)
+- Prometheus query examples
+- Architecture diagram showing metrics flow
+
+**CLAUDE.md additions**:
+- Micrometer integration details
+- Available metric names and tags
+- Custom metrics implementation guide
+- Dashboard customization instructions
+
+### Metrics Architecture
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌─────────────┐
+│  Eagle Bank API │────▶│  Prometheus  │────▶│   Grafana   │
+│  (Micrometer)   │     │  (Scraping)  │     │ (Dashboards)│
+└─────────────────┘     └──────────────┘     └─────────────┘
+        │                                              │
+        └── /actuator/prometheus ──────────────────────┘
+```
+
+### Available Metrics (Micrometer/Prometheus)
+
+#### Business Metrics
+- `transactions_count{type="deposit|withdrawal"}` - Transaction counts by type
+- `transactions_volume{type="deposit|withdrawal"}` - Transaction volumes
+- `transactions_processing_time` - Processing time histogram
+- `accounts_created{type="savings|checking"}` - Account creation counter
+- `accounts_active{type="savings|checking"}` - Active accounts gauge
+- `authentication_logins_successful` - Successful login counter
+- `authentication_logins_failed` - Failed login counter
+- `authentication_sessions_active` - Active sessions gauge
+
+#### System Metrics (Auto-collected)
+- `jvm_memory_used_bytes` - JVM memory usage
+- `jvm_threads_live` - Active thread count
+- `http_server_requests` - HTTP request metrics
+- `process_cpu_usage` - CPU utilization
+
+### Grafana Dashboard Features
+- Real-time updates with 15-second refresh
+- Time range selector for historical analysis
+- Drill-down capabilities for detailed investigation
+- Alert rules for critical thresholds
+- Mobile-responsive design
+
+### Todo List for Implementation
+
+1. ✅ Add Prometheus and Grafana monitoring plan to CLAUDE.md
+2. ✅ Update Docker Compose with Prometheus service
+3. ✅ Update Docker Compose with Grafana service
+4. ✅ Create Prometheus configuration file
+5. ✅ Create Grafana datasource configuration
+6. ✅ Create Grafana dashboard provisioning config
+7. ✅ Create Eagle Bank Grafana dashboard JSON
+8. ✅ Update README.md with monitoring section
+9. ✅ Update CLAUDE.md with metrics documentation
 
 ## Memories
 
