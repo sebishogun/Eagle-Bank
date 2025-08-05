@@ -1,0 +1,707 @@
+{
+  "info": {
+    "_postman_id": "eagle-bank-api-collection",
+    "name": "Eagle Bank API",
+    "description": "REST API for Eagle Bank - A modern banking system that allows users to manage accounts and perform transactions.\n\nThis collection includes all endpoints for user management, authentication, account management, and transactions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"auth_token\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"user_id\", jsonData.userId);",
+                  "    ",
+                  "    pm.test(\"Status code is 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Response has token\", function () {",
+                  "        pm.expect(jsonData).to.have.property('token');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates a user and returns a JWT token"
+          }
+        },
+        {
+          "name": "Check Password Strength",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/password-strength",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "password-strength"]
+            },
+            "description": "Checks password strength and returns score with feedback"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"user_id\", jsonData.id);",
+                  "    ",
+                  "    pm.test(\"Status code is 201\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": ["{{base_url}}"],
+              "path": ["users"]
+            },
+            "description": "Creates a new user account. No authentication required."
+          }
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Retrieves user details by ID. Users can only access their own data."
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"phoneNumber\": \"+1987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Updates user information. Users can only update their own data."
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Deletes a user account. Users can only delete their own account and must have no active bank accounts."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Account Management",
+      "item": [
+        {
+          "name": "Create Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"account_id\", jsonData.id);",
+                  "    ",
+                  "    pm.test(\"Status code is 201\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"initialBalance\": 1000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["accounts"]
+            },
+            "description": "Creates a new bank account for the authenticated user"
+          }
+        },
+        {
+          "name": "List User Accounts",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["accounts"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Retrieves a paginated list of the user's bank accounts"
+          }
+        },
+        {
+          "name": "Get Account by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Retrieves details of a specific bank account"
+          }
+        },
+        {
+          "name": "Update Account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": \"SAVINGS\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Updates account information"
+          }
+        },
+        {
+          "name": "Delete Account",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Deletes a bank account. Account must have zero balance and no transaction history."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Create Deposit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"transaction_id\", jsonData.id);",
+                  "    ",
+                  "    pm.test(\"Status code is 201\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 500.00,\n  \"description\": \"Monthly salary deposit\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Creates a deposit transaction"
+          }
+        },
+        {
+          "name": "Create Withdrawal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 100.00,\n  \"description\": \"ATM withdrawal\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Creates a withdrawal transaction. Requires sufficient funds."
+          }
+        },
+        {
+          "name": "List Account Transactions",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Retrieves a paginated list of transactions for an account"
+          }
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions", "{{transaction_id}}"]
+            },
+            "description": "Retrieves details of a specific transaction"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Metrics (Admin Only)",
+      "item": [
+        {
+          "name": "Get All Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            },
+            "description": "Retrieves all application metrics. Admin role required."
+          }
+        },
+        {
+          "name": "Get Transaction Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics/transaction",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "transaction"]
+            },
+            "description": "Retrieves transaction-specific metrics. Admin role required."
+          }
+        },
+        {
+          "name": "Get Account Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics/account",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "account"]
+            },
+            "description": "Retrieves account-specific metrics. Admin role required."
+          }
+        },
+        {
+          "name": "Get Authentication Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics/authentication",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "authentication"]
+            },
+            "description": "Retrieves authentication-specific metrics. Admin role required."
+          }
+        },
+        {
+          "name": "Get Cache Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics/cache",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "cache"]
+            },
+            "description": "Retrieves cache statistics. Admin role required."
+          }
+        },
+        {
+          "name": "Get System Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics/health",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "health"]
+            },
+            "description": "Retrieves system health metrics. Admin role required."
+          }
+        },
+        {
+          "name": "Reset Metrics",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/metrics/reset/transaction",
+              "host": ["{{base_url}}"],
+              "path": ["metrics", "reset", "transaction"]
+            },
+            "description": "Resets specific metric type. Admin role required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Scenarios",
+      "item": [
+        {
+          "name": "Complete User Flow",
+          "item": [
+            {
+              "name": "1. Create New User",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"test.user@example.com\",\n  \"password\": \"TestPass123!\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["users"]
+                }
+              }
+            },
+            {
+              "name": "2. Login as New User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"test.user@example.com\",\n  \"password\": \"TestPass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "3. Create Checking Account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"initialBalance\": 5000.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts"]
+                }
+              }
+            },
+            {
+              "name": "4. Make Deposit",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 1000.00,\n  \"description\": \"Bonus payment\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "5. Make Withdrawal",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 250.00,\n  \"description\": \"Shopping\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Error Scenarios",
+          "item": [
+            {
+              "name": "Invalid Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"wrong@example.com\",\n  \"password\": \"WrongPassword\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                },
+                "description": "Should return 401 Unauthorized"
+              }
+            },
+            {
+              "name": "Insufficient Funds Withdrawal",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 100000.00,\n  \"description\": \"Large withdrawal\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                },
+                "description": "Should return 422 Unprocessable Entity"
+              }
+            },
+            {
+              "name": "Access Other User's Account",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_url}}/accounts/550e8400-e29b-41d4-a716-446655440000",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "550e8400-e29b-41d4-a716-446655440000"]
+                },
+                "description": "Should return 403 Forbidden or 404 Not Found"
+              }
+            },
+            {
+              "name": "Delete User with Accounts",
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/users/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "{{user_id}}"]
+                },
+                "description": "Should return 409 Conflict if user has accounts"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

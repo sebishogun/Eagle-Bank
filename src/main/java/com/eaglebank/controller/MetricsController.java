@@ -1,9 +1,16 @@
 package com.eaglebank.controller;
 
 import com.eaglebank.cache.CacheStatisticsService;
+import com.eaglebank.exception.ErrorResponse;
 import com.eaglebank.metrics.MetricsDto;
 import com.eaglebank.metrics.MetricsService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +26,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/v1/metrics")
 @RequiredArgsConstructor
-@Tag(name = "Metrics", description = "Application metrics and monitoring endpoints")
+@Tag(name = "Metrics", description = "Application metrics and monitoring endpoints. Admin access required.")
+@SecurityRequirement(name = "bearerAuth")
 @PreAuthorize("hasRole('ADMIN')")
 public class MetricsController {
     
@@ -27,7 +35,22 @@ public class MetricsController {
     private final CacheStatisticsService cacheStatisticsService;
     
     @GetMapping
-    @Operation(summary = "Get all application metrics")
+    @Operation(summary = "Get all application metrics",
+              description = "Retrieves comprehensive metrics including transactions, accounts, authentication, and cache statistics. Admin role required.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Metrics retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = MetricsDto.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden - admin role required",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<MetricsDto> getAllMetrics() {
         Map<String, Object> metrics = metricsService.getAllMetrics();
         
@@ -45,7 +68,22 @@ public class MetricsController {
     }
     
     @GetMapping("/transaction")
-    @Operation(summary = "Get transaction metrics")
+    @Operation(summary = "Get transaction metrics",
+              description = "Retrieves metrics related to transactions including count, volume, and performance data. Admin role required.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Transaction metrics retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = MetricsDto.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden - admin role required",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<MetricsDto> getTransactionMetrics() {
         Map<String, Object> metrics = metricsService.getMetricsByName("transaction_metrics");
         
@@ -130,9 +168,30 @@ public class MetricsController {
     }
     
     @PostMapping("/reset/{metricType}")
-    @Operation(summary = "Reset specific metric type")
+    @Operation(summary = "Reset specific metric type",
+              description = "Resets metrics for a specific type. Use with caution as this will clear historical data. Admin role required.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Metrics reset successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Forbidden - admin role required",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Invalid metric type",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> resetMetrics(@PathVariable String metricType) {
+    public ResponseEntity<Map<String, String>> resetMetrics(
+            @Parameter(description = "Metric type to reset (transaction, account, authentication, cache)", required = true,
+                      example = "transaction")
+            @PathVariable String metricType) {
         // In production, this should be more controlled
         Map<String, String> response = new HashMap<>();
         response.put("status", "reset");
