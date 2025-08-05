@@ -7,9 +7,9 @@ import com.eaglebank.pattern.strategy.TransactionStrategy;
 import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.pattern.factory.AccountFactory;
 import com.eaglebank.pattern.factory.AccountFactoryProvider;
-import com.eaglebank.pattern.specification.Specification;
 import com.eaglebank.pattern.specification.AccountSpecifications;
 import com.eaglebank.pattern.specification.TransactionSpecifications;
+import org.springframework.data.jpa.domain.Specification;
 import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.pattern.chain.TransactionValidationChain;
 import com.eaglebank.pattern.decorator.MetricsTransactionDecorator;
@@ -330,7 +330,7 @@ class PatternIntegrationTest {
         }
         
         // 4. Query using Specification pattern
-        com.eaglebank.pattern.specification.Specification<Transaction> spec = TransactionSpecifications
+        Specification<Transaction> spec = TransactionSpecifications
                 .forAccount(accountId)
                 .and(TransactionSpecifications.ofType(Transaction.TransactionType.DEPOSIT))
                 .and(TransactionSpecifications.transactedAfter(LocalDateTime.now().minusDays(1)));

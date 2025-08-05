@@ -1,20 +1,24 @@
 package com.eaglebank.repository;
 
+import com.eaglebank.dto.response.AccountTransactionSummary;
 import com.eaglebank.entity.Account;
+import com.eaglebank.entity.Transaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface AccountRepository extends JpaRepository<Account, UUID>, SpecificationExecutor<Account> {
+public interface AccountRepository extends JpaRepository<Account, UUID>, JpaSpecificationExecutor<Account> {
     
     // Basic queries
     Optional<Account> findByIdAndUserId(UUID id, UUID userId);
@@ -65,4 +69,47 @@ public interface AccountRepository extends JpaRepository<Account, UUID>, Specifi
     Page<Account> findByStatus(Account.AccountStatus status, Pageable pageable);
     
     long countByStatus(Account.AccountStatus status);
+    
+    // Transaction-based account searches
+    @Query("SELECT DISTINCT a FROM Account a JOIN a.transactions t WHERE t.amount >= :minAmount AND t.status = 'COMPLETED'")
+    List<Account> findAccountsByMinimumTransactionAmount(@Param("minAmount") BigDecimal minAmount);
+    
+    @Query("SELECT DISTINCT a FROM Account a JOIN a.transactions t WHERE a.user.id = :userId AND t.transactionDate BETWEEN :startDate AND :endDate")
+    List<Account> findAccountsByUserAndTransactionDateRange(
+        @Param("userId") UUID userId, 
+        @Param("startDate") LocalDateTime startDate, 
+        @Param("endDate") LocalDateTime endDate
+    );
+    
+    @Query("SELECT DISTINCT a FROM Account a JOIN a.transactions t WHERE t.amount >= :threshold AND t.type = :type AND a.status = 'ACTIVE'")
+    Page<Account> findActiveAccountsWithHighValueTransactions(
+        @Param("threshold") BigDecimal threshold,
+        @Param("type") Transaction.TransactionType type,
+        Pageable pageable
+    );
+    
+    @Query("""
+        SELECT a FROM Account a 
+        WHERE a.id IN (
+            SELECT DISTINCT t.account.id FROM Transaction t 
+            WHERE t.transactionDate >= :since 
+            GROUP BY t.account.id 
+            HAVING COUNT(t) >= :minTransactions
+        )
+        """)
+    List<Account> findAccountsWithMinimumTransactionCount(
+        @Param("since") LocalDateTime since,
+        @Param("minTransactions") Long minTransactions
+    );
+    
+    @Query("""
+        SELECT new com.eaglebank.dto.response.AccountTransactionSummary(
+            a.id, a.accountNumber, a.user.id,
+            COUNT(t), SUM(t.amount), AVG(t.amount)
+        )
+        FROM Account a LEFT JOIN a.transactions t
+        WHERE a.user.id = :userId
+        GROUP BY a.id, a.accountNumber, a.user.id
+        """)
+    List<AccountTransactionSummary> getAccountTransactionSummariesForUser(@Param("userId") UUID userId);
 }

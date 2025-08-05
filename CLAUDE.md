@@ -692,6 +692,341 @@ This ensures all audit repository methods are now accessible and the audit trail
     - Added tests for all status transitions and operations
     - Verified restriction reasons and handled statuses
 
+## Multi-Currency Support Architecture (Future Enhancement)
+
+### Overview
+The system is designed to support multiple currencies with real-time exchange rates from third-party providers. The architecture emphasizes extensibility, accuracy, and profitability.
+
+### Supported Currencies (Big 5 Reserve Currencies)
+1. **USD** - US Dollar (Base currency)
+2. **EUR** - Euro
+3. **GBP** - British Pound Sterling
+4. **JPY** - Japanese Yen
+5. **CNY** - Chinese Yuan Renminbi
+
+### Exchange Rate Service Design
+
+#### Rate Provider Strategy Pattern
+```java
+interface ExchangeRateProvider {
+    String getProviderName();
+    ExchangeRate getRate(String fromCurrency, String toCurrency);
+    List<ExchangeRate> getAllRates(String baseCurrency);
+    boolean isHealthy();
+}
+
+// Implementations
+class XEProvider implements ExchangeRateProvider { }
+class CurrencyLayerProvider implements ExchangeRateProvider { }
+class ECBProvider implements ExchangeRateProvider { }
+```
+
+#### Rate Management Components
+1. **ExchangeRateService**
+   - Orchestrates multiple providers
+   - Implements circuit breaker pattern
+   - Caches rates with configurable TTL
+   - Applies profit margins
+
+2. **ProfitMarginCalculator**
+   - Configurable percentage markup (e.g., 0.5% - 2%)
+   - Different margins for different currency pairs
+   - Volume-based discounts
+
+3. **ExchangeRateCache**
+   - Redis-backed cache
+   - 5-minute TTL for normal rates
+   - 1-hour TTL for stable pairs (USD/EUR)
+   - Fallback to last known good rate
+
+### Transaction Enhancement for Multi-Currency
+
+#### Enhanced Transaction Entity
+```java
+@Entity
+public class Transaction {
+    // Existing fields...
+    
+    @Column(length = 3)
+    private String originalCurrency;
+    
+    @Column(precision = 19, scale = 2)
+    private BigDecimal originalAmount;
+    
+    @Column(length = 3)
+    private String convertedCurrency;
+    
+    @Column(precision = 19, scale = 2)
+    private BigDecimal convertedAmount;
+    
+    @Column(precision = 10, scale = 6)
+    private BigDecimal exchangeRate;
+    
+    @Column(precision = 5, scale = 2)
+    private BigDecimal profitMargin;
+    
+    @Column(length = 50)
+    private String rateProvider;
+    
+    private LocalDateTime rateTimestamp;
+}
+```
+
+#### Currency Conversion Flow
+1. Validate source and target currencies
+2. Check rate cache
+3. If cache miss, fetch from providers (with fallback)
+4. Apply profit margin
+5. Calculate converted amount
+6. Store all details for audit
+
+## Payment Processor Architecture (Future Enhancement)
+
+### Processor Interface Hierarchy
+```java
+// Base interface
+interface PaymentProcessor {
+    ProcessorType getType();
+    PaymentResult processPayment(PaymentRequest request);
+    PaymentStatus checkStatus(String transactionId);
+    RefundResult processRefund(String transactionId, BigDecimal amount);
+    boolean supportsPartialRefund();
+    ProcessorCapabilities getCapabilities();
+}
+
+// Specialized interfaces
+interface CardProcessor extends PaymentProcessor {
+    CardValidationResult validateCard(CardDetails card);
+    boolean supports3DSecure();
+}
+
+interface BankTransferProcessor extends PaymentProcessor {
+    BankValidationResult validateBankAccount(BankDetails bank);
+    TransferSpeed[] supportedSpeeds();
+}
+
+interface WalletProcessor extends PaymentProcessor {
+    WalletAuthResult authenticateWallet(WalletCredentials creds);
+}
+```
+
+### Key Design Patterns
+
+#### 1. Strategy Pattern for Processors
+```java
+@Component
+class ProcessorStrategyFactory {
+    Map<ProcessorType, PaymentProcessor> processors;
+    
+    PaymentProcessor getProcessor(PaymentMethod method) {
+        return processors.get(method.getProcessorType());
+    }
+}
+```
+
+#### 2. Chain of Responsibility for Validation
+```java
+abstract class PaymentValidator {
+    protected PaymentValidator next;
+    
+    public abstract ValidationResult validate(PaymentRequest request);
+}
+
+class AmountValidator extends PaymentValidator { }
+class FraudValidator extends PaymentValidator { }
+class ComplianceValidator extends PaymentValidator { }
+class VelocityValidator extends PaymentValidator { }
+```
+
+#### 3. Observer Pattern for Webhooks
+```java
+interface WebhookHandler {
+    void handleWebhook(ProcessorWebhook webhook);
+    ProcessorType getProcessorType();
+}
+
+@Component
+class WebhookDispatcher {
+    List<WebhookHandler> handlers;
+    
+    void dispatch(ProcessorWebhook webhook) {
+        handlers.stream()
+            .filter(h -> h.getProcessorType() == webhook.getType())
+            .forEach(h -> h.handleWebhook(webhook));
+    }
+}
+```
+
+#### 4. Decorator Pattern for Features
+```java
+// Add retry logic
+class RetryableProcessor extends ProcessorDecorator {
+    RetryableProcessor(PaymentProcessor processor, RetryConfig config) {
+        super(processor);
+        this.retryConfig = config;
+    }
+}
+
+// Add metrics collection
+class MetricsProcessor extends ProcessorDecorator { }
+
+// Add logging
+class LoggingProcessor extends ProcessorDecorator { }
+```
+
+### Implementation Components
+
+#### ProcessorConfiguration
+```java
+@ConfigurationProperties("payment.processors")
+class ProcessorConfiguration {
+    Map<String, ProcessorConfig> processors;
+    
+    @Data
+    static class ProcessorConfig {
+        String apiKey;
+        String secretKey;
+        String webhookSecret;
+        String baseUrl;
+        boolean sandboxMode;
+        Map<String, String> additionalConfig;
+    }
+}
+```
+
+#### ProcessorHealthChecker
+```java
+@Component
+class ProcessorHealthChecker {
+    @Scheduled(fixedDelay = 60000)
+    void checkHealth() {
+        processors.forEach(processor -> {
+            HealthStatus status = processor.checkHealth();
+            if (!status.isHealthy()) {
+                circuitBreaker.open(processor.getType());
+                alertingService.sendAlert(new ProcessorDownAlert(processor));
+            }
+        });
+    }
+}
+```
+
+#### ProcessorFeeCalculator
+```java
+@Component
+class ProcessorFeeCalculator {
+    BigDecimal calculateFee(ProcessorType type, BigDecimal amount, Currency currency) {
+        FeeStructure structure = feeRepository.findByProcessorAndCurrency(type, currency);
+        
+        BigDecimal fee = structure.getFixedFee()
+            .add(amount.multiply(structure.getPercentageFee()));
+            
+        return fee.max(structure.getMinimumFee());
+    }
+}
+```
+
+#### IdempotencyManager
+```java
+@Component
+class IdempotencyManager {
+    @Cacheable("idempotency")
+    PaymentResult getExistingResult(String idempotencyKey) {
+        return resultRepository.findByIdempotencyKey(idempotencyKey);
+    }
+    
+    PaymentResult processWithIdempotency(String key, Supplier<PaymentResult> processor) {
+        return cache.computeIfAbsent(key, k -> processor.get());
+    }
+}
+```
+
+### Database Schema Updates
+
+#### payment_processors
+```sql
+CREATE TABLE payment_processors (
+    id UUID PRIMARY KEY,
+    processor_type VARCHAR(50) NOT NULL,
+    processor_name VARCHAR(100) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    configuration JSONB,
+    supported_currencies TEXT[],
+    supported_countries TEXT[],
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+#### processor_transactions
+```sql
+CREATE TABLE processor_transactions (
+    id UUID PRIMARY KEY,
+    transaction_id UUID REFERENCES transactions(id),
+    processor_id UUID REFERENCES payment_processors(id),
+    processor_transaction_id VARCHAR(255),
+    idempotency_key VARCHAR(255) UNIQUE,
+    status VARCHAR(50),
+    request_payload JSONB,
+    response_payload JSONB,
+    webhook_payload JSONB,
+    fee_amount DECIMAL(19,2),
+    fee_currency VARCHAR(3),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+#### exchange_rates
+```sql
+CREATE TABLE exchange_rates (
+    id UUID PRIMARY KEY,
+    from_currency VARCHAR(3) NOT NULL,
+    to_currency VARCHAR(3) NOT NULL,
+    rate DECIMAL(10,6) NOT NULL,
+    inverse_rate DECIMAL(10,6) NOT NULL,
+    provider VARCHAR(50),
+    valid_from TIMESTAMP,
+    valid_until TIMESTAMP,
+    created_at TIMESTAMP,
+    UNIQUE(from_currency, to_currency, provider, valid_from)
+);
+```
+
+#### currency_configurations
+```sql
+CREATE TABLE currency_configurations (
+    currency_code VARCHAR(3) PRIMARY KEY,
+    currency_name VARCHAR(100),
+    decimal_places INTEGER,
+    symbol VARCHAR(10),
+    is_active BOOLEAN DEFAULT true,
+    min_transaction_amount DECIMAL(19,2),
+    max_transaction_amount DECIMAL(19,2),
+    default_profit_margin DECIMAL(5,2),
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+```
+
+### Integration Patterns
+
+#### Resilience Patterns
+1. **Circuit Breaker**: Prevent cascading failures
+2. **Retry with Exponential Backoff**: Handle transient failures
+3. **Bulkhead**: Isolate processor failures
+4. **Timeout**: Prevent hanging requests
+5. **Fallback**: Graceful degradation
+
+#### Security Considerations
+1. **Webhook Signature Verification**: Validate all incoming webhooks
+2. **API Key Rotation**: Regular key rotation schedule
+3. **PCI Compliance**: Never store sensitive card data
+4. **Encryption**: All sensitive data encrypted at rest
+5. **Audit Logging**: Complete trail of all operations
+
+This architecture provides a robust foundation for international banking operations while maintaining flexibility for future enhancements.
+
 ## Memories
 
 - I will commit and use git, claude does not do that

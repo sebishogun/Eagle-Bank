@@ -1,8 +1,11 @@
 package com.eaglebank.controller;
 
+import com.eaglebank.dto.request.AccountSearchRequest;
 import com.eaglebank.dto.request.CreateAccountRequest;
 import com.eaglebank.dto.request.UpdateAccountRequest;
 import com.eaglebank.dto.response.AccountResponse;
+import com.eaglebank.dto.response.AccountTransactionSummary;
+import com.eaglebank.entity.Account;
 import com.eaglebank.exception.ErrorResponse;
 import com.eaglebank.security.UserPrincipal;
 import com.eaglebank.service.AccountService;
@@ -25,6 +28,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -182,5 +187,120 @@ public class AccountController {
         log.info("Deleting account {} for user: {}", accountId, userPrincipal.getId());
         accountService.deleteAccount(userPrincipal.getId(), accountId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/activity-summary")
+    @Operation(summary = "Get account activity summary",
+              description = "Retrieves transaction summaries for all accounts owned by the authenticated user, including transaction counts and average amounts")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Activity summaries retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = AccountTransactionSummary.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<List<AccountTransactionSummary>> getAccountActivitySummary(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal userPrincipal) {
+        
+        log.info("Getting account activity summary for user: {}", userPrincipal.getId());
+        List<AccountTransactionSummary> summaries = accountService.getAccountActivitySummary(userPrincipal.getId());
+        return ResponseEntity.ok(summaries);
+    }
+
+    @GetMapping("/recent-activity")
+    @Operation(summary = "Get accounts with recent activity",
+              description = "Retrieves accounts that have had transactions since the specified date")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Accounts retrieved successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = AccountResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid date format",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<List<AccountResponse>> getAccountsWithRecentActivity(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Parameter(description = "Date to check activity since", required = true, example = "2024-01-01T00:00:00")
+            @RequestParam LocalDateTime since) {
+        
+        log.info("Getting accounts with activity since {} for user: {}", since, userPrincipal.getId());
+        List<Account> accounts = accountService.findAccountsWithRecentActivity(userPrincipal.getId(), since);
+        List<AccountResponse> responses = accounts.stream()
+                .map(this::mapToResponse)
+                .toList();
+        return ResponseEntity.ok(responses);
+    }
+
+    @PostMapping("/search")
+    @Operation(summary = "Search accounts by transaction criteria",
+              description = "Searches user's accounts based on complex transaction criteria. All search parameters are optional.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = Page.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid search criteria",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - missing or invalid token",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests",
+                    content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<Page<AccountResponse>> searchAccounts(
+            @Parameter(hidden = true) @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @Parameter(description = "Search criteria", required = true)
+            @Valid @RequestBody AccountSearchRequest searchRequest,
+            @Parameter(description = "Pagination parameters")
+            @PageableDefault(size = 20) Pageable pageable) {
+        
+        log.info("Searching accounts for user: {} with criteria: {}", userPrincipal.getId(), searchRequest);
+        Page<Account> accounts = accountService.findAccountsByTransactionCriteria(
+                userPrincipal.getId(),
+                searchRequest.getMinTransactionAmount(),
+                searchRequest.getTransactionType(),
+                searchRequest.getSince(),
+                pageable
+        );
+        
+        Page<AccountResponse> responses = accounts.map(this::mapToResponse);
+        return ResponseEntity.ok(responses);
+    }
+
+    private AccountResponse mapToResponse(Account account) {
+        AccountResponse.AccountResponseBuilder builder = AccountResponse.builder()
+                .id(account.getId())
+                .accountNumber(account.getAccountNumber())
+                .accountName(account.getAccountName())
+                .accountType(account.getAccountType())
+                .status(account.getStatus())
+                .balance(account.getBalance())
+                .currency(account.getCurrency())
+                .userId(account.getUser().getId())
+                .createdAt(account.getCreatedAt())
+                .updatedAt(account.getUpdatedAt());
+        
+        // Add credit-specific fields for credit accounts
+        if (account.getAccountType() == Account.AccountType.CREDIT) {
+            builder.creditLimit(account.getCreditLimit());
+            // Calculate available credit: creditLimit + balance (balance is negative for credit used)
+            java.math.BigDecimal availableCredit = account.getCreditLimit() != null 
+                ? account.getCreditLimit().add(account.getBalance())
+                : java.math.BigDecimal.ZERO;
+            builder.availableCredit(availableCredit);
+        }
+        
+        return builder.build();
     }
 }

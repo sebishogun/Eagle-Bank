@@ -5,7 +5,9 @@ import com.eaglebank.audit.Auditable;
 import com.eaglebank.dto.request.CreateAccountRequest;
 import com.eaglebank.dto.request.UpdateAccountRequest;
 import com.eaglebank.dto.response.AccountResponse;
+import com.eaglebank.dto.response.AccountTransactionSummary;
 import com.eaglebank.entity.Account;
+import com.eaglebank.entity.Transaction;
 import com.eaglebank.entity.User;
 import com.eaglebank.event.AccountCreatedEvent;
 import com.eaglebank.exception.ForbiddenException;
@@ -14,6 +16,7 @@ import com.eaglebank.metrics.AccountMetricsCollector;
 import com.eaglebank.pattern.factory.AccountFactory;
 import com.eaglebank.pattern.factory.AccountFactoryProvider;
 import com.eaglebank.pattern.observer.EventPublisher;
+import com.eaglebank.pattern.specification.AccountSpecifications;
 import com.eaglebank.pattern.strategy.AccountStatusStrategy;
 import com.eaglebank.pattern.strategy.AccountStatusStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
@@ -25,10 +28,14 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static com.eaglebank.config.CacheConfig.ACCOUNTS_CACHE;
@@ -269,5 +276,70 @@ public class AccountService {
         }
         
         return builder.build();
+    }
+    
+    // Transaction-based search methods
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
+    public List<Account> findHighValueAccounts(BigDecimal threshold) {
+        log.debug("Finding accounts with transactions >= {}", threshold);
+        return accountRepository.findAccountsByMinimumTransactionAmount(threshold);
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
+    public List<Account> findAccountsWithRecentActivity(UUID userId, LocalDateTime since) {
+        log.debug("Finding accounts with activity for user {} since {}", userId, since);
+        
+        Specification<Account> spec = AccountSpecifications.belongsToUser(userId)
+                .and(AccountSpecifications.hasRecentTransactions(since));
+        
+        return accountRepository.findAll(spec);
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
+    public List<AccountTransactionSummary> getAccountActivitySummary(UUID userId) {
+        log.debug("Getting account activity summary for user {}", userId);
+        return accountRepository.getAccountTransactionSummariesForUser(userId);
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
+    public List<Account> findDormantAccounts(LocalDateTime lastActivityBefore) {
+        log.debug("Finding dormant accounts with no activity since {}", lastActivityBefore);
+        
+        Specification<Account> spec = AccountSpecifications.activeAccounts()
+                .and(Specification.not(AccountSpecifications.hasRecentTransactions(lastActivityBefore)));
+        
+        return accountRepository.findAll(spec);
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Account")
+    public Page<Account> findAccountsByTransactionCriteria(
+            UUID userId,
+            BigDecimal minTransactionAmount,
+            Transaction.TransactionType transactionType,
+            LocalDateTime since,
+            Pageable pageable) {
+        
+        log.debug("Finding accounts for user {} with transaction criteria", userId);
+        
+        Specification<Account> spec = AccountSpecifications.belongsToUser(userId);
+        
+        if (minTransactionAmount != null) {
+            spec = spec.and(AccountSpecifications.hasHighValueTransaction(minTransactionAmount));
+        }
+        
+        if (transactionType != null) {
+            spec = spec.and(AccountSpecifications.hasTransactionOfType(transactionType));
+        }
+        
+        if (since != null) {
+            spec = spec.and(AccountSpecifications.hasRecentTransactions(since));
+        }
+        
+        return accountRepository.findAll(spec, pageable);
     }
 }

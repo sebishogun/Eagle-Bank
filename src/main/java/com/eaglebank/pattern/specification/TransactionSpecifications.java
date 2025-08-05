@@ -3,6 +3,7 @@ package com.eaglebank.pattern.specification;
 import com.eaglebank.entity.Transaction;
 import com.eaglebank.entity.Transaction.TransactionType;
 import com.eaglebank.entity.Transaction.TransactionStatus;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
