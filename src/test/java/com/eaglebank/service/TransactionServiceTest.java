@@ -13,6 +13,8 @@ import com.eaglebank.exception.ResourceNotFoundException;
 import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.metrics.TransactionMetricsCollector;
 import com.eaglebank.pattern.observer.EventPublisher;
+import com.eaglebank.pattern.strategy.AccountStatusStrategy;
+import com.eaglebank.pattern.strategy.AccountStatusStrategyFactory;
 import com.eaglebank.pattern.strategy.TransactionStrategy;
 import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
@@ -57,6 +59,12 @@ class TransactionServiceTest {
     private TransactionStrategy transactionStrategy;
     
     @Mock
+    private AccountStatusStrategyFactory statusStrategyFactory;
+    
+    @Mock
+    private AccountStatusStrategy accountStatusStrategy;
+    
+    @Mock
     private EventPublisher eventPublisher;
     
     @Mock
@@ -90,6 +98,7 @@ class TransactionServiceTest {
                 .accountNumber("ACC1234567890")
                 .accountType(AccountType.CHECKING)
                 .balance(new BigDecimal("1000.00"))
+                .status(Account.AccountStatus.ACTIVE)
                 .user(testUser)
                 .build();
 
@@ -115,6 +124,8 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canDeposit(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.DEPOSIT, testAccount)).thenReturn(transactionStrategy);
         when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("1500.00"));
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
@@ -147,6 +158,8 @@ class TransactionServiceTest {
         testTransaction.setBalanceAfter(new BigDecimal("700.00"));
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
         when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("700.00"));
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
@@ -174,6 +187,8 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
         doThrow(new InsufficientFundsException("Insufficient funds"))
                 .when(transactionStrategy).validateTransaction(testAccount, request.getAmount());
@@ -319,5 +334,51 @@ class TransactionServiceTest {
                 .hasMessageContaining("Amount must be positive");
         
         verify(accountRepository, never()).findById(any());
+    }
+    
+    @Test
+    void createWithdrawal_FrozenAccount_ThrowsException() {
+        CreateTransactionRequest request = CreateTransactionRequest.builder()
+                .transactionType(TransactionType.WITHDRAWAL)
+                .amount(new BigDecimal("100.00"))
+                .description("ATM withdrawal")
+                .build();
+                
+        testAccount.setStatus(Account.AccountStatus.FROZEN);
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(false);
+        when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is frozen. Please contact customer service.");
+
+        assertThatThrownBy(() -> transactionService.createTransaction(userId, accountId, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Account is frozen. Please contact customer service.");
+
+        verify(strategyFactory, never()).getStrategy(any(), any());
+        verify(transactionRepository, never()).save(any(Transaction.class));
+    }
+    
+    @Test
+    void createDeposit_ClosedAccount_ThrowsException() {
+        CreateTransactionRequest request = CreateTransactionRequest.builder()
+                .transactionType(TransactionType.DEPOSIT)
+                .amount(new BigDecimal("100.00"))
+                .description("Deposit")
+                .build();
+                
+        testAccount.setStatus(Account.AccountStatus.CLOSED);
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canDeposit(testAccount, request.getAmount())).thenReturn(false);
+        when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is closed. No operations are allowed.");
+
+        assertThatThrownBy(() -> transactionService.createTransaction(userId, accountId, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Account is closed. No operations are allowed.");
+
+        verify(strategyFactory, never()).getStrategy(any(), any());
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 }

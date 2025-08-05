@@ -3,6 +3,7 @@ package com.eaglebank.service;
 import com.eaglebank.audit.Auditable;
 import com.eaglebank.audit.AuditEntry;
 import com.eaglebank.dto.request.CreateTransactionRequest;
+import com.eaglebank.dto.request.TransactionSearchRequest;
 import com.eaglebank.dto.response.TransactionResponse;
 import com.eaglebank.entity.Account;
 import com.eaglebank.entity.Transaction;
@@ -13,6 +14,10 @@ import com.eaglebank.event.TransactionCompletedEvent;
 import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.InsufficientFundsException;
 import com.eaglebank.exception.ResourceNotFoundException;
+import com.eaglebank.pattern.strategy.AccountStatusStrategy;
+import com.eaglebank.pattern.strategy.AccountStatusStrategyFactory;
+import com.eaglebank.pattern.specification.Specification;
+import com.eaglebank.pattern.specification.TransactionSpecifications;
 import com.eaglebank.pattern.strategy.TransactionStrategy;
 import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
@@ -45,6 +50,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final TransactionStrategyFactory strategyFactory;
+    private final AccountStatusStrategyFactory statusStrategyFactory;
     private final EventPublisher eventPublisher;
     private final TransactionMetricsCollector metricsCollector;
     private static final DateTimeFormatter REFERENCE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
@@ -64,6 +70,14 @@ public class TransactionService {
         
         // Check authorization
         validateAccountOwnership(account, userId);
+        
+        // Check account status
+        AccountStatusStrategy statusStrategy = statusStrategyFactory.getStrategy(account);
+        if (request.getTransactionType() == TransactionType.WITHDRAWAL && !statusStrategy.canWithdraw(account, request.getAmount())) {
+            throw new IllegalStateException(statusStrategy.getRestrictionReason());
+        } else if (request.getTransactionType() == TransactionType.DEPOSIT && !statusStrategy.canDeposit(account, request.getAmount())) {
+            throw new IllegalStateException(statusStrategy.getRestrictionReason());
+        }
         
         // Get strategy for transaction type and account type
         TransactionStrategy strategy = strategyFactory.getStrategy(request.getTransactionType(), account);
@@ -201,5 +215,133 @@ public class TransactionService {
                 .createdAt(transaction.getCreatedAt())
                 .updatedAt(transaction.getUpdatedAt())
                 .build();
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Transaction")
+    public Page<TransactionResponse> searchAccountTransactions(UUID userId, UUID accountId,
+                                                              LocalDateTime startDate, LocalDateTime endDate,
+                                                              BigDecimal minAmount, BigDecimal maxAmount,
+                                                              TransactionType type, String description,
+                                                              Pageable pageable) {
+        // Find and validate account
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
+        
+        // Check authorization
+        validateAccountOwnership(account, userId);
+        
+        // Build specification based on filters
+        Specification<Transaction> spec = TransactionSpecifications.forAccount(accountId);
+        
+        // Add date filters
+        if (startDate != null && endDate != null) {
+            spec = spec.and(TransactionSpecifications.transactedBetween(startDate, endDate));
+        } else if (startDate != null) {
+            spec = spec.and(TransactionSpecifications.transactedAfter(startDate));
+        } else if (endDate != null) {
+            spec = spec.and(TransactionSpecifications.transactedBefore(endDate));
+        }
+        
+        // Add amount filters
+        if (minAmount != null && maxAmount != null) {
+            spec = spec.and(TransactionSpecifications.amountBetween(minAmount, maxAmount));
+        } else if (minAmount != null) {
+            spec = spec.and(TransactionSpecifications.amountGreaterThan(minAmount));
+        } else if (maxAmount != null) {
+            spec = spec.and(TransactionSpecifications.amountLessThan(maxAmount));
+        }
+        
+        // Add type filter
+        if (type != null) {
+            spec = spec.and(TransactionSpecifications.ofType(type));
+        }
+        
+        // Add description filter
+        if (description != null && !description.trim().isEmpty()) {
+            spec = spec.and(TransactionSpecifications.descriptionContains(description.trim()));
+        }
+        
+        // Execute search
+        Page<Transaction> transactions = transactionRepository.findAll(spec, pageable);
+        
+        log.info("Found {} transactions matching search criteria for account {}", 
+                transactions.getTotalElements(), accountId);
+        
+        return transactions.map(this::mapToResponse);
+    }
+    
+    @Transactional(readOnly = true)
+    @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Transaction")
+    public Page<TransactionResponse> advancedSearchTransactions(UUID userId, UUID accountId,
+                                                               TransactionSearchRequest searchRequest,
+                                                               Pageable pageable) {
+        // Find and validate account
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
+        
+        // Check authorization
+        validateAccountOwnership(account, userId);
+        
+        // Build specification based on search request
+        Specification<Transaction> spec = TransactionSpecifications.forAccount(accountId);
+        
+        // Add date filters
+        if (searchRequest.getStartDate() != null && searchRequest.getEndDate() != null) {
+            spec = spec.and(TransactionSpecifications.transactedBetween(
+                    searchRequest.getStartDate(), searchRequest.getEndDate()));
+        } else if (searchRequest.getStartDate() != null) {
+            spec = spec.and(TransactionSpecifications.transactedAfter(searchRequest.getStartDate()));
+        } else if (searchRequest.getEndDate() != null) {
+            spec = spec.and(TransactionSpecifications.transactedBefore(searchRequest.getEndDate()));
+        }
+        
+        // Add amount filters
+        if (searchRequest.getMinAmount() != null && searchRequest.getMaxAmount() != null) {
+            spec = spec.and(TransactionSpecifications.amountBetween(
+                    searchRequest.getMinAmount(), searchRequest.getMaxAmount()));
+        } else if (searchRequest.getMinAmount() != null) {
+            spec = spec.and(TransactionSpecifications.amountGreaterThan(searchRequest.getMinAmount()));
+        } else if (searchRequest.getMaxAmount() != null) {
+            spec = spec.and(TransactionSpecifications.amountLessThan(searchRequest.getMaxAmount()));
+        }
+        
+        // Add type filter
+        if (searchRequest.getTransactionType() != null) {
+            spec = spec.and(TransactionSpecifications.ofType(searchRequest.getTransactionType()));
+        }
+        
+        // Add description filter
+        if (searchRequest.getDescriptionKeyword() != null && 
+            !searchRequest.getDescriptionKeyword().trim().isEmpty()) {
+            spec = spec.and(TransactionSpecifications.descriptionContains(
+                    searchRequest.getDescriptionKeyword().trim()));
+        }
+        
+        // Add reference number filter
+        if (searchRequest.getReferenceNumber() != null && 
+            !searchRequest.getReferenceNumber().trim().isEmpty()) {
+            spec = spec.and(TransactionSpecifications.referenceNumberEquals(
+                    searchRequest.getReferenceNumber().trim()));
+        }
+        
+        // Add completed only filter
+        if (Boolean.TRUE.equals(searchRequest.getCompletedOnly())) {
+            spec = spec.and(TransactionSpecifications.completedTransactions());
+        }
+        
+        // Add large transaction filter
+        if (searchRequest.getLargeTransactionThreshold() != null) {
+            spec = spec.and(TransactionSpecifications.largeTransactions(
+                    searchRequest.getLargeTransactionThreshold()));
+        }
+        
+        // Execute search
+        Page<Transaction> transactions = transactionRepository.findAll(spec, pageable);
+        
+        log.info("Advanced search found {} transactions matching criteria for account {}", 
+                transactions.getTotalElements(), accountId);
+        
+        return transactions.map(this::mapToResponse);
     }
 }

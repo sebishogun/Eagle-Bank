@@ -1,6 +1,7 @@
 package com.eaglebank.dto.response;
 
 import com.eaglebank.entity.Account.AccountType;
+import com.eaglebank.entity.Account.AccountStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class AccountResponse {
     private String accountNumber;
     private String accountName;
     private AccountType accountType;
+    private AccountStatus status;
     private BigDecimal balance;
     private BigDecimal creditLimit;
     private BigDecimal availableCredit;

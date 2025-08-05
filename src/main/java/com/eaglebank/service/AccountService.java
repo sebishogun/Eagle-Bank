@@ -14,8 +14,11 @@ import com.eaglebank.metrics.AccountMetricsCollector;
 import com.eaglebank.pattern.factory.AccountFactory;
 import com.eaglebank.pattern.factory.AccountFactoryProvider;
 import com.eaglebank.pattern.observer.EventPublisher;
+import com.eaglebank.pattern.strategy.AccountStatusStrategy;
+import com.eaglebank.pattern.strategy.AccountStatusStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
+import com.eaglebank.validation.AccountStatusTransitionValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -41,6 +44,8 @@ public class AccountService {
     private final AccountFactoryProvider factoryProvider;
     private final EventPublisher eventPublisher;
     private final AccountMetricsCollector accountMetricsCollector;
+    private final AccountStatusStrategyFactory statusStrategyFactory;
+    private final AccountStatusTransitionValidator statusTransitionValidator;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int MAX_ACCOUNT_NUMBER_ATTEMPTS = 10;
 
@@ -138,8 +143,45 @@ public class AccountService {
         
         validateAccountOwnership(account, userId);
         
+        // Check if account status allows updates
+        AccountStatusStrategy statusStrategy = statusStrategyFactory.getStrategy(account);
+        
+        // Handle status change separately
+        if (request.getStatus() != null && request.getStatus() != account.getStatus()) {
+            // Validate transition
+            statusTransitionValidator.validateTransition(account, request.getStatus(), request.getStatusChangeReason());
+            
+            // Log status change
+            log.info("Changing account {} status from {} to {} for reason: {}", 
+                    accountId, account.getStatus(), request.getStatus(), request.getStatusChangeReason());
+            account.setStatus(request.getStatus());
+            
+            // Publish status change event
+            eventPublisher.publishAccountStatusChanged(account, request.getStatusChangeReason());
+        } else if (!statusStrategy.canUpdate(account)) {
+            throw new IllegalStateException(statusStrategy.getRestrictionReason());
+        }
+        
+        // Update other fields
+        if (request.getAccountName() != null) {
+            account.setAccountName(request.getAccountName());
+        }
+        
         if (request.getAccountType() != null) {
             account.setAccountType(request.getAccountType());
+        }
+        
+        if (request.getCurrency() != null) {
+            account.setCurrency(request.getCurrency());
+        }
+        
+        // Credit limit can only be updated for credit accounts
+        if (request.getCreditLimit() != null) {
+            if (account.getAccountType() == Account.AccountType.CREDIT) {
+                account.setCreditLimit(request.getCreditLimit());
+            } else {
+                log.warn("Attempted to set credit limit on non-credit account {}", accountId);
+            }
         }
         
         Account updatedAccount = accountRepository.save(account);
@@ -156,6 +198,12 @@ public class AccountService {
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
         
         validateAccountOwnership(account, userId);
+        
+        // Check if account status allows deletion
+        AccountStatusStrategy statusStrategy = statusStrategyFactory.getStrategy(account);
+        if (!statusStrategy.canDelete(account)) {
+            throw new IllegalStateException(statusStrategy.getRestrictionReason());
+        }
         
         // Check if account has transactions
         long transactionCount = accountRepository.countTransactionsByAccountId(accountId);
@@ -204,6 +252,7 @@ public class AccountService {
                 .accountNumber(account.getAccountNumber())
                 .accountName(account.getAccountName())
                 .accountType(account.getAccountType())
+                .status(account.getStatus())
                 .balance(account.getBalance())
                 .userId(account.getUser().getId())
                 .createdAt(account.getCreatedAt())

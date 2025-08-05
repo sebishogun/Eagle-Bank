@@ -19,7 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
+import com.eaglebank.config.TestStrategyConfiguration;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@ContextConfiguration(classes = {TestStrategyConfiguration.class})
 class CreditAccountIntegrationTest {
     
     @Autowired

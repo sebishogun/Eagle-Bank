@@ -13,9 +13,12 @@ import com.eaglebank.metrics.AccountMetricsCollector;
 import com.eaglebank.pattern.factory.AccountFactory;
 import com.eaglebank.pattern.factory.AccountFactoryProvider;
 import com.eaglebank.pattern.observer.EventPublisher;
+import com.eaglebank.pattern.strategy.AccountStatusStrategy;
+import com.eaglebank.pattern.strategy.AccountStatusStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
 import com.eaglebank.util.UuidGenerator;
+import com.eaglebank.validation.AccountStatusTransitionValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +61,15 @@ class AccountServiceTest {
     
     @Mock
     private AccountMetricsCollector accountMetricsCollector;
+    
+    @Mock
+    private AccountStatusStrategyFactory statusStrategyFactory;
+    
+    @Mock
+    private AccountStatusStrategy accountStatusStrategy;
+    
+    @Mock
+    private AccountStatusTransitionValidator statusTransitionValidator;
 
     @InjectMocks
     private AccountService accountService;
@@ -84,6 +96,7 @@ class AccountServiceTest {
                 .accountNumber("ACC1234567890")
                 .accountType(AccountType.CHECKING)
                 .balance(new BigDecimal("1000.00"))
+                .status(Account.AccountStatus.ACTIVE)
                 .user(testUser)
                 .build();
     }
@@ -197,6 +210,8 @@ class AccountServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canUpdate(testAccount)).thenReturn(true);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
         AccountResponse response = accountService.updateAccount(userId, accountId, request);
@@ -234,7 +249,11 @@ class AccountServiceTest {
 
     @Test
     void deleteAccount_Success() {
+        testAccount.setBalance(BigDecimal.ZERO); // Must have zero balance to delete
+        
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canDelete(testAccount)).thenReturn(true);
         when(accountRepository.countTransactionsByAccountId(accountId)).thenReturn(0L);
 
         accountService.deleteAccount(userId, accountId);
@@ -245,6 +264,8 @@ class AccountServiceTest {
     @Test
     void deleteAccount_WithTransactions_ThrowsException() {
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canDelete(testAccount)).thenReturn(true);
         when(accountRepository.countTransactionsByAccountId(accountId)).thenReturn(5L);
 
         assertThatThrownBy(() -> accountService.deleteAccount(userId, accountId))
@@ -279,5 +300,53 @@ class AccountServiceTest {
         assertThatThrownBy(() -> accountService.getAccountByAccountNumber(userId, "ACC1234567890"))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Account not found");
+    }
+    
+    @Test
+    void updateAccount_StatusChange_Success() {
+        UpdateAccountRequest request = UpdateAccountRequest.builder()
+                .status(Account.AccountStatus.FROZEN)
+                .statusChangeReason("Customer request")
+                .build();
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
+
+        AccountResponse response = accountService.updateAccount(userId, accountId, request);
+
+        assertThat(response).isNotNull();
+        verify(statusTransitionValidator).validateTransition(testAccount, Account.AccountStatus.FROZEN, "Customer request");
+        verify(eventPublisher).publishAccountStatusChanged(any(Account.class), eq("Customer request"));
+        verify(accountRepository).save(any(Account.class));
+    }
+    
+    @Test
+    void updateAccount_FrozenAccountCannotUpdate_ThrowsException() {
+        testAccount.setStatus(Account.AccountStatus.FROZEN);
+        UpdateAccountRequest request = UpdateAccountRequest.builder()
+                .accountName("New Name")
+                .build();
+
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canUpdate(testAccount)).thenReturn(false);
+        when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is frozen. Please contact customer service.");
+
+        assertThatThrownBy(() -> accountService.updateAccount(userId, accountId, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Account is frozen. Please contact customer service.");
+    }
+    
+    @Test
+    void deleteAccount_NonZeroBalance_ThrowsException() {
+        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
+        when(accountStatusStrategy.canDelete(testAccount)).thenReturn(false);
+        when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account must have zero balance to be deleted");
+
+        assertThatThrownBy(() -> accountService.deleteAccount(userId, accountId))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Account must have zero balance to be deleted");
     }
 }

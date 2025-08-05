@@ -37,6 +37,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ContextConfiguration;
 import com.eaglebank.config.TestPatternConfig;
+import com.eaglebank.config.TestStrategyConfiguration;
 // removed Spring's Specification import - using our custom one
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -54,7 +55,7 @@ import static org.mockito.Mockito.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
-@ContextConfiguration(classes = {TestPatternConfig.class})
+@ContextConfiguration(classes = {TestPatternConfig.class, TestStrategyConfiguration.class})
 class PatternIntegrationTest {
     
     @Autowired

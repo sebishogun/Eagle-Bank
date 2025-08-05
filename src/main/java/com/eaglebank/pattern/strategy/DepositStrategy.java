@@ -28,8 +28,10 @@ public class DepositStrategy implements TransactionStrategy {
             throw new IllegalArgumentException("Deposit amount exceeds maximum limit of " + MAX_DEPOSIT_AMOUNT);
         }
         
-        if (account.getStatus() != Account.AccountStatus.ACTIVE) {
-            throw new IllegalStateException("Account must be active to accept deposits");
+        // Allow deposits to ACTIVE and FROZEN accounts (frozen accounts can receive deposits)
+        if (account.getStatus() != Account.AccountStatus.ACTIVE && 
+            account.getStatus() != Account.AccountStatus.FROZEN) {
+            throw new IllegalStateException("Account must be active or frozen to accept deposits");
         }
     }
     

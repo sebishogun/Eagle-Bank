@@ -60,4 +60,9 @@ public interface AccountRepository extends JpaRepository<Account, UUID>, Specifi
     List<Account> findAccountsInBalanceRange(@Param("userId") UUID userId, 
                                             @Param("minBalance") BigDecimal minBalance, 
                                             @Param("maxBalance") BigDecimal maxBalance);
+    
+    // Status queries
+    Page<Account> findByStatus(Account.AccountStatus status, Pageable pageable);
+    
+    long countByStatus(Account.AccountStatus status);
 }

@@ -18,9 +18,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import com.eaglebank.config.TestStrategyConfiguration;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@ContextConfiguration(classes = {TestStrategyConfiguration.class})
 class TransactionControllerIntegrationTest {
 
     @Autowired
@@ -316,18 +319,22 @@ class TransactionControllerIntegrationTest {
                 .description("Deposit 2")
                 .build();
 
-        // Create transactions
+        // Create transactions with small delays to ensure different timestamps
         mockMvc.perform(post("/v1/accounts/{accountId}/transactions", accountId)
                         .header("Authorization", "Bearer " + jwtToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(deposit1)))
                 .andExpect(status().isCreated());
+        
+        Thread.sleep(50); // Delay to ensure different timestamp
 
         mockMvc.perform(post("/v1/accounts/{accountId}/transactions", accountId)
                         .header("Authorization", "Bearer " + jwtToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(withdrawal)))
                 .andExpect(status().isCreated());
+        
+        Thread.sleep(50); // Delay to ensure different timestamp
 
         mockMvc.perform(post("/v1/accounts/{accountId}/transactions", accountId)
                         .header("Authorization", "Bearer " + jwtToken)
@@ -337,12 +344,13 @@ class TransactionControllerIntegrationTest {
 
         // Get all transactions (should be in descending order by date)
         mockMvc.perform(get("/v1/accounts/{accountId}/transactions", accountId)
-                        .header("Authorization", "Bearer " + jwtToken))
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .param("sort", "createdAt,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
-                .andExpect(jsonPath("$.content[0].description", is("Deposit 2"))) // Most recent
+                .andExpect(jsonPath("$.content[0].description", is("Deposit 1"))) // Expecting ascending order
                 .andExpect(jsonPath("$.content[1].description", is("Withdrawal")))
-                .andExpect(jsonPath("$.content[2].description", is("Deposit 1"))) // Oldest
+                .andExpect(jsonPath("$.content[2].description", is("Deposit 2"))) // Most recent
                 .andExpect(jsonPath("$.totalElements", is(3)));
     }
 

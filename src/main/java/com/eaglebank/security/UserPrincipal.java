@@ -55,4 +55,10 @@ public class UserPrincipal implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+    
+    public boolean hasRole(String role) {
+        String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return authorities.stream()
+                .anyMatch(auth -> auth.getAuthority().equals(roleWithPrefix));
+    }
 }

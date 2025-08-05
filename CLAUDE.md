@@ -547,6 +547,151 @@ Add comprehensive monitoring to Eagle Bank API using Prometheus for metrics coll
 8. ✅ Update README.md with monitoring section
 9. ✅ Update CLAUDE.md with metrics documentation
 
+## Account Status Management
+
+### Overview
+Implemented a comprehensive account status management system using Strategy and Factory patterns. This provides extensible business logic for different account statuses (ACTIVE, FROZEN, CLOSED) with proper validation and state transitions.
+
+### Design Patterns Used
+
+#### 1. Strategy Pattern for Account Status
+- **Interface**: `AccountStatusStrategy` - Defines operations allowed for each status
+- **Implementations**:
+  - `ActiveAccountStrategy` - Allows all operations except deletion with non-zero balance
+  - `FrozenAccountStrategy` - Blocks withdrawals and updates, allows deposits
+  - `ClosedAccountStrategy` - Blocks all operations except balance inquiry
+- **Factory**: `AccountStatusStrategyFactory` - Retrieves appropriate strategy by status
+
+#### 2. State Machine for Status Transitions
+- **Validator**: `AccountStatusTransitionValidator`
+- **Valid Transitions**:
+  - ACTIVE → FROZEN, CLOSED
+  - FROZEN → ACTIVE, CLOSED  
+  - CLOSED → (no transitions allowed)
+- **Validation**: Requires reason for status changes, prevents invalid transitions
+
+### Key Features
+
+#### Enhanced Account Updates
+The `UpdateAccountRequest` now supports updating multiple fields:
+- `accountName` - Custom account name
+- `accountType` - Account type (SAVINGS, CHECKING, CREDIT)
+- `status` - Account status with transition validation
+- `creditLimit` - Credit limit for credit accounts
+- `currency` - Account currency
+- `statusChangeReason` - Required reason for status changes
+
+#### Transaction Validation by Status
+- **ACTIVE**: All transactions allowed
+- **FROZEN**: Only deposits allowed, withdrawals blocked
+- **CLOSED**: No transactions allowed
+
+#### Audit Trail Integration
+- All status changes are logged with reasons
+- Domain events published for status changes
+- Complete audit history available through AuditController
+
+### Implementation Details
+
+#### AccountStatusStrategy Interface
+```java
+public interface AccountStatusStrategy {
+    boolean canWithdraw(Account account, BigDecimal amount);
+    boolean canDeposit(Account account, BigDecimal amount);
+    boolean canUpdate(Account account);
+    boolean canDelete(Account account);
+    boolean canChangeStatusTo(Account account, AccountStatus newStatus);
+    String getRestrictionReason();
+    AccountStatus getHandledStatus();
+}
+```
+
+#### Status Change Flow
+1. User requests status change via PATCH `/v1/accounts/{id}`
+2. `AccountStatusTransitionValidator` validates the transition
+3. Status is updated and reason recorded
+4. Domain event published for monitoring
+5. Audit entry created automatically
+
+#### Integration Points
+- **AccountService**: Validates operations using status strategies
+- **TransactionService**: Checks account status before processing
+- **EventPublisher**: Publishes status change events
+- **AuditController**: Queries audit history for compliance
+
+### Testing
+Comprehensive test coverage includes:
+- Unit tests for each strategy implementation
+- Status transition validation tests  
+- Integration tests for end-to-end workflows
+- Controller tests for API endpoints
+
+### Future Extensibility
+The design allows easy addition of new account statuses:
+1. Create new strategy implementing `AccountStatusStrategy`
+2. Register in `AccountStatusStrategyFactory`
+3. Update `AccountStatusTransitionValidator` with transition rules
+4. No changes needed in services or controllers
+
+## Audit Repository Usage
+
+### Problem Identified
+The audit repository interface had multiple query methods that were not being used in production, making it impossible to query audit logs effectively.
+
+### Solution Implemented
+Created `AuditController` with comprehensive audit querying capabilities:
+
+#### Endpoints
+- `GET /v1/audit` - List all audit entries (admin only)
+- `GET /v1/audit/users/{userId}` - Get user's audit trail (own or admin)
+- `GET /v1/audit/accounts/{accountId}` - Get account audit trail (admin only)
+- `GET /v1/audit/actions/{action}` - Filter by action type (admin only)
+- `GET /v1/audit/date-range` - Query by date range (admin only)
+- `GET /v1/audit/stats` - Get audit statistics (admin only)
+
+#### Security
+- Admin-only access for most endpoints
+- Users can view their own audit trail
+- Proper 403 responses for unauthorized access
+
+#### Statistics Endpoint
+Provides aggregated metrics:
+- Total audit entries
+- Counts by action type (LOGIN, CREATE, UPDATE, DELETE, ACCESS_DENIED)
+- Date range filtering for trend analysis
+
+This ensures all audit repository methods are now accessible and the audit trail can be properly queried for compliance and security purposes.
+
+## Development Progress (Updated)
+
+### Recently Completed Tasks
+39. Implement Account Status Strategy Pattern
+    - Created `AccountStatusStrategy` interface
+    - Implemented strategies for ACTIVE, FROZEN, and CLOSED statuses
+    - Created `AccountStatusStrategyFactory` for strategy retrieval
+    - Integrated status checks in AccountService and TransactionService
+    
+40. Implement Account Status Transitions
+    - Created `AccountStatusTransitionValidator` with state machine logic
+    - Added status change validation with reason requirement
+    - Published domain events for status changes
+    
+41. Enhance Account Update Functionality
+    - Extended `UpdateAccountRequest` with multiple fields
+    - Added support for updating accountName, currency, creditLimit
+    - Implemented status change with validation
+    
+42. Create Audit Query Endpoints
+    - Implemented `AuditController` with comprehensive query methods
+    - Added pagination and filtering capabilities
+    - Created audit statistics endpoint
+    - Ensured all audit repository methods are utilized
+    
+43. Add Comprehensive Testing
+    - Created `AccountStatusStrategyTest` for strategy validation
+    - Added tests for all status transitions and operations
+    - Verified restriction reasons and handled statuses
+
 ## Memories
 
 - I will commit and use git, claude does not do that

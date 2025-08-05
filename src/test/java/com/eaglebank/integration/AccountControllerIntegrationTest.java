@@ -15,9 +15,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
+import com.eaglebank.config.TestStrategyConfiguration;
 
 import java.math.BigDecimal;
 
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@ContextConfiguration(classes = {TestStrategyConfiguration.class})
 class AccountControllerIntegrationTest {
 
     @Autowired
@@ -345,7 +348,37 @@ class AccountControllerIntegrationTest {
 
     @Test
     void deleteAccount_Success() throws Exception {
-        // Create an account
+        // Create an account with zero balance
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(AccountType.CHECKING)
+                .initialBalance(BigDecimal.ZERO)
+                .build();
+
+        MvcResult createResult = mockMvc.perform(post("/v1/accounts")
+                        .header("Authorization", "Bearer " + jwtToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        AccountResponse account = objectMapper.readValue(
+                createResult.getResponse().getContentAsString(), 
+                AccountResponse.class);
+
+        // Delete the account (should work with zero balance)
+        mockMvc.perform(delete("/v1/accounts/{accountId}", account.getId())
+                        .header("Authorization", "Bearer " + jwtToken))
+                .andExpect(status().isNoContent());
+
+        // Verify it's deleted
+        mockMvc.perform(get("/v1/accounts/{accountId}", account.getId())
+                        .header("Authorization", "Bearer " + jwtToken))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteAccount_WithBalance_Returns409() throws Exception {
+        // Create an account with balance
         CreateAccountRequest request = CreateAccountRequest.builder()
                 .accountType(AccountType.CHECKING)
                 .initialBalance(new BigDecimal("1000.00"))
@@ -362,15 +395,11 @@ class AccountControllerIntegrationTest {
                 createResult.getResponse().getContentAsString(), 
                 AccountResponse.class);
 
-        // Delete the account
+        // Try to delete the account with balance
         mockMvc.perform(delete("/v1/accounts/{accountId}", account.getId())
                         .header("Authorization", "Bearer " + jwtToken))
-                .andExpect(status().isNoContent());
-
-        // Verify it's deleted
-        mockMvc.perform(get("/v1/accounts/{accountId}", account.getId())
-                        .header("Authorization", "Bearer " + jwtToken))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message", containsString("zero balance")));
     }
 
     @Test
@@ -378,7 +407,7 @@ class AccountControllerIntegrationTest {
         // Create an account as user1
         CreateAccountRequest request = CreateAccountRequest.builder()
                 .accountType(AccountType.CHECKING)
-                .initialBalance(new BigDecimal("1000.00"))
+                .initialBalance(BigDecimal.ZERO)
                 .build();
 
         MvcResult createResult = mockMvc.perform(post("/v1/accounts")
@@ -439,14 +468,14 @@ class AccountControllerIntegrationTest {
                 .andExpect(jsonPath("$.content", hasSize(1)))
                 .andExpect(jsonPath("$.content[0].id", is(account.getId().toString())));
 
-        // Delete account
+        // Try to delete account with balance - should fail
         mockMvc.perform(delete("/v1/accounts/{accountId}", account.getId())
                         .header("Authorization", "Bearer " + jwtToken))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isConflict());
 
-        // Verify deletion - check the specific account is gone
+        // Verify account still exists
         mockMvc.perform(get("/v1/accounts/{accountId}", account.getId())
                         .header("Authorization", "Bearer " + jwtToken))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk());
     }
 }

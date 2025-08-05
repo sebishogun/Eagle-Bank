@@ -24,8 +24,10 @@ import org.springframework.cache.CacheManager;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.test.context.support.WithMockUser;
+import com.eaglebank.config.TestStrategyConfiguration;
 
 import java.math.BigDecimal;
 import java.util.Map;
@@ -36,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @ActiveProfiles("test")
 @Transactional
+@ContextConfiguration(classes = {TestStrategyConfiguration.class})
 class MetricsCacheIntegrationTest {
     
     @Autowired

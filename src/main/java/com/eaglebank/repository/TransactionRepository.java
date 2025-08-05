@@ -74,4 +74,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     List<Transaction> findByAccountIdAndStatus(UUID accountId, Transaction.TransactionStatus status);
     
     Page<Transaction> findByStatus(Transaction.TransactionStatus status, Pageable pageable);
+    
+    // Last transaction query
+    Optional<Transaction> findTopByAccountIdOrderByTransactionDateDesc(UUID accountId);
 }
