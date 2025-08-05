@@ -22,6 +22,11 @@ public class WithdrawalStrategy implements TransactionStrategy {
     
     @Override
     public void validateTransaction(Account account, BigDecimal amount) {
+        // This strategy is for non-credit accounts
+        if (account.getAccountType() == Account.AccountType.CREDIT) {
+            throw new IllegalArgumentException("This strategy is not for credit accounts");
+        }
+        
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Withdrawal amount must be positive");
         }

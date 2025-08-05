@@ -17,8 +17,14 @@ class TransactionStrategyFactoryTest {
     void setUp() {
         DepositStrategy depositStrategy = new DepositStrategy();
         WithdrawalStrategy withdrawalStrategy = new WithdrawalStrategy();
+        CreditWithdrawalStrategy creditWithdrawalStrategy = new CreditWithdrawalStrategy();
         
-        factory = new TransactionStrategyFactory(List.of(depositStrategy, withdrawalStrategy));
+        factory = new TransactionStrategyFactory(
+            List.of(depositStrategy, withdrawalStrategy, creditWithdrawalStrategy),
+            withdrawalStrategy,
+            creditWithdrawalStrategy,
+            depositStrategy
+        );
     }
     
     @Test
@@ -45,7 +51,12 @@ class TransactionStrategyFactoryTest {
     @DisplayName("Should throw exception for unsupported transaction type")
     void shouldThrowExceptionForUnsupportedType() {
         // Create a factory with no strategies
-        TransactionStrategyFactory emptyFactory = new TransactionStrategyFactory(List.of());
+        TransactionStrategyFactory emptyFactory = new TransactionStrategyFactory(
+            List.of(),
+            new WithdrawalStrategy(),
+            new CreditWithdrawalStrategy(),
+            new DepositStrategy()
+        );
         
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> 
             emptyFactory.getStrategy(Transaction.TransactionType.DEPOSIT)

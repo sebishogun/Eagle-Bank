@@ -65,8 +65,8 @@ public class TransactionService {
         // Check authorization
         validateAccountOwnership(account, userId);
         
-        // Get strategy for transaction type
-        TransactionStrategy strategy = strategyFactory.getStrategy(request.getTransactionType());
+        // Get strategy for transaction type and account type
+        TransactionStrategy strategy = strategyFactory.getStrategy(request.getTransactionType(), account);
         
         // Validate transaction using strategy
         strategy.validateTransaction(account, request.getAmount());
@@ -124,6 +124,7 @@ public class TransactionService {
     }
 
 
+    @Transactional(readOnly = true)
     @Cacheable(value = TRANSACTIONS_CACHE, key = "#transactionId")
     @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Transaction", entityIdParam = "2")
     public TransactionResponse getTransactionById(UUID userId, UUID accountId, UUID transactionId) {
@@ -141,6 +142,7 @@ public class TransactionService {
         return mapToResponse(transaction);
     }
 
+    @Transactional(readOnly = true)
     @Cacheable(value = ACCOUNT_TRANSACTIONS_CACHE, key = "#accountId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Transaction")
     public Page<TransactionResponse> getAccountTransactions(UUID userId, UUID accountId, Pageable pageable) {

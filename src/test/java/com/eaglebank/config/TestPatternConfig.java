@@ -1,23 +1,27 @@
 package com.eaglebank.config;
 
-import com.eaglebank.pattern.strategy.*;
+import com.eaglebank.cache.CacheEvictionListener;
+import com.eaglebank.cache.CacheStatisticsService;
+import com.eaglebank.cache.CacheWarmingService;
+import com.eaglebank.pattern.chain.AmountValidationHandler;
+import com.eaglebank.pattern.chain.DescriptionValidationHandler;
+import com.eaglebank.pattern.chain.TransactionTypeValidationHandler;
+import com.eaglebank.pattern.chain.TransactionValidationChain;
+import com.eaglebank.pattern.command.CommandInvoker;
 import com.eaglebank.pattern.factory.*;
 import com.eaglebank.pattern.observer.EventPublisher;
-import com.eaglebank.pattern.chain.*;
-import com.eaglebank.pattern.decorator.*;
-import com.eaglebank.pattern.command.CommandInvoker;
-import java.util.List;
-import com.eaglebank.metrics.*;
-import com.eaglebank.cache.*;
-import com.eaglebank.audit.*;
-import com.eaglebank.repository.*;
-import com.eaglebank.service.UserService;
+import com.eaglebank.pattern.strategy.*;
+import com.eaglebank.repository.AccountRepository;
+import com.eaglebank.repository.UserRepository;
 import com.eaglebank.service.AccountService;
+import com.eaglebank.service.UserService;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+
+import java.util.List;
 
 @TestConfiguration
 public class TestPatternConfig {
@@ -25,8 +29,11 @@ public class TestPatternConfig {
     @Bean
     @Primary
     public TransactionStrategyFactory transactionStrategyFactory(
-            List<TransactionStrategy> strategies) {
-        return new TransactionStrategyFactory(strategies);
+            List<TransactionStrategy> strategies,
+            WithdrawalStrategy withdrawalStrategy,
+            CreditWithdrawalStrategy creditWithdrawalStrategy,
+            DepositStrategy depositStrategy) {
+        return new TransactionStrategyFactory(strategies, withdrawalStrategy, creditWithdrawalStrategy, depositStrategy);
     }
     
     @Bean
@@ -37,6 +44,11 @@ public class TestPatternConfig {
     @Bean
     public WithdrawalStrategy withdrawalStrategy() {
         return new WithdrawalStrategy();
+    }
+    
+    @Bean
+    public CreditWithdrawalStrategy creditWithdrawalStrategy() {
+        return new CreditWithdrawalStrategy();
     }
     
     @Bean
@@ -53,6 +65,11 @@ public class TestPatternConfig {
     @Bean
     public CheckingAccountFactory checkingAccountFactory() {
         return new CheckingAccountFactory();
+    }
+    
+    @Bean
+    public CreditAccountFactory creditAccountFactory() {
+        return new CreditAccountFactory();
     }
     
     @Bean

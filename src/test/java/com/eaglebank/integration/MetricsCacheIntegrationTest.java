@@ -114,10 +114,16 @@ class MetricsCacheIntegrationTest {
         assertThrows(Exception.class, () -> authService.login(failedLogin));
         
         // 2. Account creation metrics
-        CreateAccountRequest savingsRequest = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("5000.00"));
+        CreateAccountRequest savingsRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("5000.00"))
+                .build();
         AccountResponse savings = accountService.createAccount(userId, savingsRequest);
         
-        CreateAccountRequest checkingRequest = new CreateAccountRequest(Account.AccountType.CHECKING, new BigDecimal("2000.00"));
+        CreateAccountRequest checkingRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.CHECKING)
+                .initialBalance(new BigDecimal("2000.00"))
+                .build();
         AccountResponse checking = accountService.createAccount(userId, checkingRequest);
         
         // 3. Transaction metrics
@@ -168,7 +174,10 @@ class MetricsCacheIntegrationTest {
     @DisplayName("Should track cache statistics during operations")
     void shouldTrackCacheStatistics() {
         // Create account and transactions to populate cache
-        CreateAccountRequest accountRequest = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("1000.00"));
+        CreateAccountRequest accountRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("1000.00"))
+                .build();
         AccountResponse account = accountService.createAccount(userId, accountRequest);
         
         // First access - cache miss
@@ -202,7 +211,10 @@ class MetricsCacheIntegrationTest {
     @DisplayName("Should collect time-windowed metrics")
     void shouldCollectTimeWindowedMetrics() throws InterruptedException {
         // Create transactions over time
-        CreateAccountRequest accountRequest = new CreateAccountRequest(Account.AccountType.CHECKING, new BigDecimal("5000.00"));
+        CreateAccountRequest accountRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.CHECKING)
+                .initialBalance(new BigDecimal("5000.00"))
+                .build();
         AccountResponse account = accountService.createAccount(userId, accountRequest);
         
         // First batch of transactions
@@ -241,10 +253,10 @@ class MetricsCacheIntegrationTest {
     void shouldWarmCacheAndImprovePerformance() {
         // Create multiple accounts
         for (int i = 0; i < 5; i++) {
-            CreateAccountRequest request = new CreateAccountRequest(
-                    i % 2 == 0 ? Account.AccountType.SAVINGS : Account.AccountType.CHECKING,
-                    new BigDecimal("1000.00").multiply(new BigDecimal(i + 1))
-            );
+            CreateAccountRequest request = CreateAccountRequest.builder()
+                    .accountType(i % 2 == 0 ? Account.AccountType.SAVINGS : Account.AccountType.CHECKING)
+                    .initialBalance(new BigDecimal("1000.00").multiply(new BigDecimal(i + 1)))
+                    .build();
             accountService.createAccount(userId, request);
         }
         
@@ -277,7 +289,10 @@ class MetricsCacheIntegrationTest {
     @DisplayName("Should track metrics by type and time window")
     void shouldTrackMetricsByTypeAndTimeWindow() {
         // Create account
-        CreateAccountRequest accountRequest = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("10000.00"));
+        CreateAccountRequest accountRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("10000.00"))
+                .build();
         AccountResponse account = accountService.createAccount(userId, accountRequest);
         
         // Mix of transaction types
@@ -320,7 +335,10 @@ class MetricsCacheIntegrationTest {
         LoginRequest loginRequest = new LoginRequest("metrics@test.com", "password123");
         authService.login(loginRequest);
         
-        CreateAccountRequest accountRequest = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("5000.00"));
+        CreateAccountRequest accountRequest = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("5000.00"))
+                .build();
         AccountResponse account = accountService.createAccount(userId, accountRequest);
         
         CreateTransactionRequest transactionRequest = new CreateTransactionRequest(

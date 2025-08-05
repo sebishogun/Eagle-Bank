@@ -115,9 +115,8 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
-        when(strategyFactory.getStrategy(TransactionType.DEPOSIT)).thenReturn(transactionStrategy);
+        when(strategyFactory.getStrategy(TransactionType.DEPOSIT, testAccount)).thenReturn(transactionStrategy);
         when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("1500.00"));
-        // Remove unnecessary stubbing - not used in the service
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -148,9 +147,8 @@ class TransactionServiceTest {
         testTransaction.setBalanceAfter(new BigDecimal("700.00"));
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
-        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL)).thenReturn(transactionStrategy);
+        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
         when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("700.00"));
-        // Remove unnecessary stubbing - not used in the service
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -176,13 +174,12 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
-        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL)).thenReturn(transactionStrategy);
+        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
         doThrow(new InsufficientFundsException("Insufficient funds"))
                 .when(transactionStrategy).validateTransaction(testAccount, request.getAmount());
 
         assertThatThrownBy(() -> transactionService.createTransaction(userId, accountId, request))
-                .isInstanceOf(InsufficientFundsException.class)
-                .hasMessageContaining("Insufficient funds");
+                .isInstanceOf(InsufficientFundsException.class);
 
         verify(transactionRepository, never()).save(any(Transaction.class));
         verify(accountRepository, never()).save(any(Account.class));

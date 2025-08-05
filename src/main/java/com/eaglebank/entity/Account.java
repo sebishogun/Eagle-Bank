@@ -42,6 +42,9 @@ public class Account extends BaseEntity {
     @Column(nullable = false, length = 20)
     private AccountStatus status;
     
+    @Column(precision = 19, scale = 2)
+    private BigDecimal creditLimit;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

@@ -18,8 +18,11 @@ public class AccountResponse {
     
     private UUID id;
     private String accountNumber;
+    private String accountName;
     private AccountType accountType;
     private BigDecimal balance;
+    private BigDecimal creditLimit;
+    private BigDecimal availableCredit;
     private UUID userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

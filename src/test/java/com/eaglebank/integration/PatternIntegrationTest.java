@@ -125,10 +125,10 @@ class PatternIntegrationTest {
     @DisplayName("Should integrate Strategy and Factory patterns for account creation and transaction")
     void shouldIntegrateStrategyAndFactoryPatterns() {
         // Create account using Factory pattern
-        CreateAccountRequest request = new CreateAccountRequest(
-                Account.AccountType.SAVINGS,
-                new BigDecimal("1000.00")
-        );
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("1000.00"))
+                .build();
         
         AccountResponse accountResponse = accountService.createAccount(userId, request);
         assertNotNull(accountResponse);
@@ -223,7 +223,10 @@ class PatternIntegrationTest {
     @DisplayName("Should integrate Command pattern with undo functionality")
     void shouldIntegrateCommandPattern() {
         // Create account using command
-        CreateAccountRequest request = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("2000.00"));
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("2000.00"))
+                .build();
         CreateAccountCommand command = new CreateAccountCommand(
                 accountService, accountRepository, userId, request
         );
@@ -273,10 +276,10 @@ class PatternIntegrationTest {
     @DisplayName("Should integrate Observer pattern for event handling")
     void shouldIntegrateObserverPattern() {
         // Create account
-        CreateAccountRequest request = new CreateAccountRequest(
-                Account.AccountType.SAVINGS,
-                new BigDecimal("5000.00")
-        );
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("5000.00"))
+                .build();
         
         AccountResponse accountResponse = accountService.createAccount(userId, request);
         
@@ -302,7 +305,10 @@ class PatternIntegrationTest {
     @DisplayName("Should integrate all patterns in complex workflow")
     void shouldIntegrateAllPatternsInComplexWorkflow() {
         // 1. Create account using Factory and Command patterns
-        CreateAccountRequest request = new CreateAccountRequest(Account.AccountType.SAVINGS, new BigDecimal("10000.00"));
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.SAVINGS)
+                .initialBalance(new BigDecimal("10000.00"))
+                .build();
         CreateAccountCommand createCommand = new CreateAccountCommand(
                 accountService, accountRepository, userId, request
         );
@@ -352,7 +358,10 @@ class PatternIntegrationTest {
     
     // Helper methods
     private Account createAccount(String type, BigDecimal initialBalance) {
-        CreateAccountRequest request = new CreateAccountRequest(Account.AccountType.valueOf(type), initialBalance);
+        CreateAccountRequest request = CreateAccountRequest.builder()
+                .accountType(Account.AccountType.valueOf(type))
+                .initialBalance(initialBalance)
+                .build();
         AccountResponse response = accountService.createAccount(userId, request);
         return accountRepository.findById(response.getId()).orElseThrow();
     }

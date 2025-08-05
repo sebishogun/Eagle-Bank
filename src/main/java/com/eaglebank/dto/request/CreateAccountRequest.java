@@ -19,7 +19,12 @@ public class CreateAccountRequest {
     @NotNull(message = "Account type is required")
     private AccountType accountType;
     
+    private String accountName;
+    
     @NotNull(message = "Initial balance is required")
     @PositiveOrZero(message = "Initial balance cannot be negative")
     private BigDecimal initialBalance;
+    
+    @PositiveOrZero(message = "Credit limit cannot be negative")
+    private BigDecimal creditLimit;
 }

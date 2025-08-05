@@ -1,22 +1,21 @@
 package com.eaglebank.service;
 
-import com.eaglebank.audit.Auditable;
 import com.eaglebank.audit.AuditEntry;
+import com.eaglebank.audit.Auditable;
 import com.eaglebank.dto.request.CreateAccountRequest;
 import com.eaglebank.dto.request.UpdateAccountRequest;
 import com.eaglebank.dto.response.AccountResponse;
 import com.eaglebank.entity.Account;
 import com.eaglebank.entity.User;
 import com.eaglebank.event.AccountCreatedEvent;
-import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.ResourceNotFoundException;
 import com.eaglebank.metrics.AccountMetricsCollector;
 import com.eaglebank.pattern.factory.AccountFactory;
 import com.eaglebank.pattern.factory.AccountFactoryProvider;
+import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
-import com.eaglebank.util.UuidGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -29,7 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.util.UUID;
 
-import static com.eaglebank.config.CacheConfig.*;
+import static com.eaglebank.config.CacheConfig.ACCOUNTS_CACHE;
+import static com.eaglebank.config.CacheConfig.USER_ACCOUNTS_CACHE;
 
 @Slf4j
 @Service
@@ -56,6 +56,16 @@ public class AccountService {
         
         // Create account using factory
         Account account = factory.createAccount(user, request.getInitialBalance());
+        
+        // Set custom account name if provided
+        if (request.getAccountName() != null && !request.getAccountName().trim().isEmpty()) {
+            account.setAccountName(request.getAccountName().trim());
+        }
+        
+        // Set credit limit if provided (for credit accounts)
+        if (request.getCreditLimit() != null && account.getAccountType() == Account.AccountType.CREDIT) {
+            account.setCreditLimit(request.getCreditLimit());
+        }
         
         // Ensure unique account number
         int attempts = 0;
@@ -189,14 +199,26 @@ public class AccountService {
     }
 
     private AccountResponse mapToResponse(Account account) {
-        return AccountResponse.builder()
+        AccountResponse.AccountResponseBuilder builder = AccountResponse.builder()
                 .id(account.getId())
                 .accountNumber(account.getAccountNumber())
+                .accountName(account.getAccountName())
                 .accountType(account.getAccountType())
                 .balance(account.getBalance())
                 .userId(account.getUser().getId())
                 .createdAt(account.getCreatedAt())
-                .updatedAt(account.getUpdatedAt())
-                .build();
+                .updatedAt(account.getUpdatedAt());
+        
+        // Add credit-specific fields for credit accounts
+        if (account.getAccountType() == Account.AccountType.CREDIT) {
+            builder.creditLimit(account.getCreditLimit());
+            // Calculate available credit: creditLimit + balance (balance is negative for credit used)
+            java.math.BigDecimal availableCredit = account.getCreditLimit() != null 
+                ? account.getCreditLimit().add(account.getBalance())
+                : java.math.BigDecimal.ZERO;
+            builder.availableCredit(availableCredit);
+        }
+        
+        return builder.build();
     }
 }

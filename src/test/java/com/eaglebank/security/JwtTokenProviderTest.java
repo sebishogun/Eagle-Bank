@@ -13,12 +13,13 @@ class JwtTokenProviderTest {
     
     private JwtTokenProvider jwtTokenProvider;
     private final String secret = "ThisIsAVeryLongSecretKeyForTestingPurposesOnlyAndShouldBeAtLeast256Bits";
-    private final long expiration = 86400000; // 24 hours
-    
+
     @BeforeEach
     void setUp() {
         jwtTokenProvider = new JwtTokenProvider();
         ReflectionTestUtils.setField(jwtTokenProvider, "secret", secret);
+        // 24 hours
+        long expiration = 86400000;
         ReflectionTestUtils.setField(jwtTokenProvider, "expiration", expiration);
         jwtTokenProvider.init();
     }
