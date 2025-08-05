@@ -131,7 +131,7 @@ class EventPublisherTest {
         // Should not throw exception
         assertDoesNotThrow(() -> eventPublisher.publishEvent(null));
         
-        // Verify publisher was called with null
-        verify(applicationEventPublisher).publishEvent(null);
+        // Verify publisher was NOT called since we handle null gracefully
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 }

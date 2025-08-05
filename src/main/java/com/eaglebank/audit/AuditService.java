@@ -80,4 +80,17 @@ public class AuditService {
         
         audit(entry);
     }
+    
+    public void auditTokenRefresh(UUID userId, String userEmail, String ipAddress) {
+        AuditEntry entry = AuditEntry.builder()
+                .action(AuditEntry.AuditAction.TOKEN_REFRESH)
+                .entityId(userId != null ? userId.toString() : null)
+                .entityType("User")
+                .username(userEmail)
+                .userId(userId)
+                .ipAddress(ipAddress)
+                .build();
+        
+        audit(entry);
+    }
 }

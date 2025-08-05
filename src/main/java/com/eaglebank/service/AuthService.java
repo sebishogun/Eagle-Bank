@@ -20,12 +20,14 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -37,9 +39,23 @@ public class AuthService {
     private final EventPublisher eventPublisher;
     private final AuditService auditService;
     private final AuthenticationMetricsCollector authMetricsCollector;
+    private final LoginAttemptService loginAttemptService;
+    private final RefreshTokenService refreshTokenService;
     
     public AuthResponse login(LoginRequest loginRequest) {
         log.debug("Attempting to authenticate user: {}", loginRequest.getEmail());
+        
+        // Check if account is locked
+        if (loginAttemptService.isBlocked(loginRequest.getEmail())) {
+            HttpServletRequest request = getRequest();
+            String ipAddress = getClientIpAddress(request);
+            
+            // Audit blocked attempt
+            auditService.auditFailedAccess(loginRequest.getEmail(), "Account locked", ipAddress, "/v1/auth/login");
+            authMetricsCollector.recordFailedLogin(loginRequest.getEmail(), ipAddress);
+            
+            throw new UnauthorizedException("Account is locked due to too many failed login attempts. Please try again later.");
+        }
         
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -80,16 +96,26 @@ public class AuthService {
             // Record metrics
             authMetricsCollector.recordSuccessfulLogin(userPrincipal.getEmail(), ipAddress);
             
+            // Clear login attempts on successful login
+            loginAttemptService.loginSucceeded(userPrincipal.getEmail());
+            
+            // Create refresh token
+            String refreshToken = refreshTokenService.createRefreshToken(userPrincipal.getId());
+            
             return AuthResponse.builder()
                     .token(jwt)
                     .type("Bearer")
                     .userId(userPrincipal.getId())
                     .email(userPrincipal.getEmail())
                     .expiresAt(expiresAt)
+                    .refreshToken(refreshToken)
                     .build();
             
         } catch (BadCredentialsException e) {
             log.error("Authentication failed for user: {}", loginRequest.getEmail());
+            
+            // Record failed login attempt
+            loginAttemptService.loginFailed(loginRequest.getEmail());
             
             // Audit failed login
             HttpServletRequest request = getRequest();
@@ -99,7 +125,13 @@ public class AuthService {
             // Record metrics
             authMetricsCollector.recordFailedLogin(loginRequest.getEmail(), ipAddress);
             
-            throw new UnauthorizedException("Invalid email or password");
+            // Get remaining attempts
+            int remainingAttempts = loginAttemptService.getRemainingAttempts(loginRequest.getEmail());
+            String message = remainingAttempts > 0 
+                ? String.format("Invalid email or password. %d attempts remaining.", remainingAttempts)
+                : "Invalid email or password. Account is now locked.";
+            
+            throw new UnauthorizedException(message);
         } catch (AuthenticationException e) {
             log.error("Authentication error for user: {}", loginRequest.getEmail(), e);
             throw new UnauthorizedException("Authentication failed", e);
@@ -137,5 +169,56 @@ public class AuthService {
         }
         
         return request.getRemoteAddr();
+    }
+    
+    /**
+     * Refreshes access token using refresh token
+     */
+    @Transactional
+    public AuthResponse refreshToken(String refreshToken) {
+        log.debug("Attempting to refresh access token");
+        
+        try {
+            // Validate refresh token
+            RefreshTokenService.RefreshTokenData tokenData = refreshTokenService.validateRefreshToken(refreshToken);
+            
+            // Generate new access token
+            String jwt = tokenProvider.generateToken(tokenData.getUserId(), tokenData.getEmail());
+            
+            Date expirationDate = tokenProvider.getExpirationDateFromToken(jwt);
+            LocalDateTime expiresAt = LocalDateTime.ofInstant(
+                    expirationDate.toInstant(), 
+                    ZoneId.systemDefault()
+            );
+            
+            // Rotate refresh token for better security
+            String newRefreshToken = refreshTokenService.rotateRefreshToken(refreshToken);
+            
+            log.info("Token refreshed successfully for user: {}", tokenData.getEmail());
+            
+            // Audit token refresh
+            HttpServletRequest request = getRequest();
+            String ipAddress = getClientIpAddress(request);
+            auditService.auditTokenRefresh(tokenData.getUserId(), tokenData.getEmail(), ipAddress);
+            
+            return AuthResponse.builder()
+                    .token(jwt)
+                    .type("Bearer")
+                    .userId(tokenData.getUserId())
+                    .email(tokenData.getEmail())
+                    .expiresAt(expiresAt)
+                    .refreshToken(newRefreshToken)
+                    .build();
+                    
+        } catch (UnauthorizedException e) {
+            log.error("Token refresh failed: {}", e.getMessage());
+            
+            // Audit failed refresh
+            HttpServletRequest request = getRequest();
+            String ipAddress = getClientIpAddress(request);
+            auditService.auditFailedAccess("Unknown", "Invalid refresh token", ipAddress, "/v1/auth/refresh");
+            
+            throw e;
+        }
     }
 }

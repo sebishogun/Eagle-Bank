@@ -18,11 +18,16 @@ public class AccountEventListener {
     @EventListener
     @Async
     public void handleAccountCreated(AccountCreatedEvent event) {
+        if (event == null) {
+            log.warn("Received null AccountCreatedEvent");
+            return;
+        }
+        
         log.info("Account created: {} for user: {} with initial balance: {}", 
                 event.getAccountNumber(), event.getUserId(), event.getInitialBalance());
         
         // Could send welcome email, create initial statements, etc.
-        if (event.getInitialBalance().compareTo(new BigDecimal("10000")) > 0) {
+        if (event.getInitialBalance() != null && event.getInitialBalance().compareTo(new BigDecimal("10000")) > 0) {
             log.info("High-value account created with balance: {}", event.getInitialBalance());
             // Could trigger special onboarding process
         }
@@ -31,18 +36,23 @@ public class AccountEventListener {
     @EventListener
     @Async
     public void handleTransactionCompleted(TransactionCompletedEvent event) {
+        if (event == null) {
+            log.warn("Received null TransactionCompletedEvent");
+            return;
+        }
+        
         log.info("Transaction completed: {} - {} {} for account: {}", 
                 event.getReferenceNumber(), event.getType(), event.getAmount(), event.getAccountId());
         
         // Check for suspicious activity
-        if (event.getAmount().compareTo(new BigDecimal("50000")) > 0) {
+        if (event.getAmount() != null && event.getAmount().compareTo(new BigDecimal("50000")) > 0) {
             log.warn("Large transaction detected: {} - Amount: {}", 
                     event.getReferenceNumber(), event.getAmount());
             // Could trigger fraud detection
         }
         
         // Check for low balance
-        if (event.getBalanceAfter().compareTo(new BigDecimal("100")) < 0) {
+        if (event.getBalanceAfter() != null && event.getBalanceAfter().compareTo(new BigDecimal("100")) < 0) {
             log.warn("Low balance alert for account: {} - Balance: {}", 
                     event.getAccountId(), event.getBalanceAfter());
             // Could send low balance notification

@@ -444,10 +444,9 @@ class AccountControllerIntegrationTest {
                         .header("Authorization", "Bearer " + jwtToken))
                 .andExpect(status().isNoContent());
 
-        // Verify deletion
-        mockMvc.perform(get("/v1/accounts")
+        // Verify deletion - check the specific account is gone
+        mockMvc.perform(get("/v1/accounts/{accountId}", account.getId())
                         .header("Authorization", "Bearer " + jwtToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content", hasSize(0)));
+                .andExpect(status().isNotFound());
     }
 }

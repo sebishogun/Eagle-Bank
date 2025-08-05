@@ -21,6 +21,8 @@ server:
 jwt:
   secret: ${JWT_SECRET:your-secret-key-change-in-production}
   expiration: 86400000 # 24 hours in milliseconds
+  refresh:
+    expiration: 604800000 # 7 days in milliseconds
 
 logging:
   level:
@@ -40,3 +42,25 @@ springdoc:
     tagsSorter: alpha
     displayRequestDuration: true
   show-actuator: false
+
+# Security configurations
+security:
+  login:
+    max-attempts: 5
+    lockout-duration-minutes: 30
+
+# Rate limiting configurations
+rate-limiting:
+  authenticated:
+    capacity: 100
+    tokens: 100
+    period: 60
+  anonymous:
+    capacity: 20
+    tokens: 20
+    period: 60
+  ip-based: true
+
+# CORS configuration
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8080}

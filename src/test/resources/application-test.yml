@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  cache:
+    type: none
+
+# Disable rate limiting for tests
+rate-limiting:
+  authenticated:
+    capacity: 1000000
+    tokens: 1000000
+    period: 1
+  anonymous:
+    capacity: 1000000
+    tokens: 1000000
+    period: 1
+  ip-based: false
+
+# Disable security headers for tests
+security:
+  headers:
+    enabled: false
+  login:
+    max-attempts: 1000000
+    lockout-duration-minutes: 0

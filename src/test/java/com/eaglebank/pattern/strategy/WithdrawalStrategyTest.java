@@ -115,7 +115,7 @@ class WithdrawalStrategyTest {
         );
         
         BigDecimal newBalance = withdrawalStrategy.calculateNewBalance(testAccount, withdrawalAmount);
-        assertEquals(BigDecimal.ZERO, newBalance);
+        assertEquals(0, newBalance.compareTo(BigDecimal.ZERO));
     }
     
     @Test

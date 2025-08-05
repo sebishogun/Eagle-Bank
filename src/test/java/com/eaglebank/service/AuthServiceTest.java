@@ -1,9 +1,12 @@
 package com.eaglebank.service;
 
+import com.eaglebank.audit.AuditService;
 import com.eaglebank.dto.request.LoginRequest;
 import com.eaglebank.dto.response.AuthResponse;
 import com.eaglebank.entity.User;
 import com.eaglebank.exception.UnauthorizedException;
+import com.eaglebank.metrics.AuthenticationMetricsCollector;
+import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.security.JwtTokenProvider;
 import com.eaglebank.security.UserPrincipal;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +37,21 @@ class AuthServiceTest {
     
     @Mock
     private JwtTokenProvider tokenProvider;
+    
+    @Mock
+    private EventPublisher eventPublisher;
+    
+    @Mock
+    private AuditService auditService;
+    
+    @Mock
+    private AuthenticationMetricsCollector authMetricsCollector;
+    
+    @Mock
+    private LoginAttemptService loginAttemptService;
+    
+    @Mock
+    private RefreshTokenService refreshTokenService;
     
     @Mock
     private Authentication authentication;

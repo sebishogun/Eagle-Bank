@@ -2,13 +2,16 @@ package com.eaglebank.service;
 
 import com.eaglebank.dto.request.CreateUserRequest;
 import com.eaglebank.dto.request.UpdateUserRequest;
+import com.eaglebank.dto.request.ChangePasswordRequest;
 import com.eaglebank.dto.response.UserResponse;
 import com.eaglebank.entity.User;
 import com.eaglebank.exception.ForbiddenException;
 import com.eaglebank.exception.ResourceAlreadyExistsException;
 import com.eaglebank.exception.ResourceNotFoundException;
+import com.eaglebank.exception.UnauthorizedException;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
+import com.eaglebank.util.UuidGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordStrengthService passwordStrengthService;
     
     public UserResponse createUser(CreateUserRequest request) {
         log.debug("Creating new user with email: {}", request.getEmail());
@@ -140,5 +144,42 @@ public class UserService {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();
+    }
+    
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        log.debug("Changing password for user: {}", email);
+        
+        // Validate password confirmation matches
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new IllegalArgumentException("New password and confirmation do not match");
+        }
+        
+        // Get user
+        User user = getUserByEmail(email);
+        
+        // Verify current password
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+        
+        // Check password strength
+        boolean isAcceptable = passwordStrengthService.isPasswordAcceptable(
+                request.getNewPassword(), 
+                user.getEmail(), 
+                user.getFirstName(), 
+                user.getLastName()
+        );
+        
+        if (!isAcceptable) {
+            throw new IllegalArgumentException("New password does not meet security requirements. " +
+                    "Please use a stronger password with more entropy.");
+        }
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+        
+        log.info("Password changed successfully for user: {}", email);
     }
 }

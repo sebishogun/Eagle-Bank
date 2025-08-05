@@ -53,6 +53,11 @@ public class TransactionService {
     @Auditable(action = AuditEntry.AuditAction.CREATE, entityType = "Transaction", entityIdParam = "1")
     @CacheEvict(value = {ACCOUNTS_CACHE, ACCOUNT_TRANSACTIONS_CACHE}, key = "#accountId")
     public TransactionResponse createTransaction(UUID userId, UUID accountId, CreateTransactionRequest request) {
+        // Validate amount first
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Amount must be positive");
+        }
+        
         // Find and validate account
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));

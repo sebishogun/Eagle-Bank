@@ -14,6 +14,10 @@ public class EventPublisher {
     private final ApplicationEventPublisher applicationEventPublisher;
     
     public void publishEvent(DomainEvent event) {
+        if (event == null) {
+            log.warn("Attempted to publish null event");
+            return;
+        }
         log.debug("Publishing domain event: {} [{}]", event.getEventType(), event.getEventId());
         applicationEventPublisher.publishEvent(event);
     }

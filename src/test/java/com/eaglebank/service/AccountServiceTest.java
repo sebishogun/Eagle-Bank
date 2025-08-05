@@ -9,6 +9,10 @@ import com.eaglebank.entity.User;
 import com.eaglebank.exception.ResourceAlreadyExistsException;
 import com.eaglebank.exception.ResourceNotFoundException;
 import com.eaglebank.exception.ForbiddenException;
+import com.eaglebank.metrics.AccountMetricsCollector;
+import com.eaglebank.pattern.factory.AccountFactory;
+import com.eaglebank.pattern.factory.AccountFactoryProvider;
+import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.UserRepository;
 import com.eaglebank.util.UuidGenerator;
@@ -42,6 +46,18 @@ class AccountServiceTest {
 
     @Mock
     private UserRepository userRepository;
+    
+    @Mock
+    private AccountFactoryProvider factoryProvider;
+    
+    @Mock
+    private AccountFactory accountFactory;
+    
+    @Mock
+    private EventPublisher eventPublisher;
+    
+    @Mock
+    private AccountMetricsCollector accountMetricsCollector;
 
     @InjectMocks
     private AccountService accountService;
@@ -80,6 +96,8 @@ class AccountServiceTest {
                 .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(factoryProvider.getFactory(AccountType.CHECKING.name())).thenReturn(accountFactory);
+        when(accountFactory.createAccount(any(), any())).thenReturn(testAccount);
         when(accountRepository.existsByAccountNumber(anyString())).thenReturn(false);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -115,6 +133,8 @@ class AccountServiceTest {
                 .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(factoryProvider.getFactory(AccountType.CHECKING.name())).thenReturn(accountFactory);
+        when(accountFactory.createAccount(any(), any())).thenReturn(testAccount);
         when(accountRepository.existsByAccountNumber(anyString()))
                 .thenReturn(true)  // First attempt - exists
                 .thenReturn(false); // Second attempt - doesn't exist

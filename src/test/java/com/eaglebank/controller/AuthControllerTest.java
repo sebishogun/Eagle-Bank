@@ -6,7 +6,11 @@ import com.eaglebank.exception.UnauthorizedException;
 import com.eaglebank.security.JwtAuthenticationEntryPoint;
 import com.eaglebank.security.JwtAuthenticationFilter;
 import com.eaglebank.security.JwtTokenProvider;
+import com.eaglebank.security.RateLimitingFilter;
+import com.eaglebank.security.SecurityHeadersFilter;
 import com.eaglebank.service.AuthService;
+import com.eaglebank.service.RefreshTokenService;
+import com.eaglebank.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -52,6 +56,18 @@ class AuthControllerTest {
     
     @MockitoBean
     private UserDetailsService userDetailsService;
+    
+    @MockitoBean
+    private SecurityHeadersFilter securityHeadersFilter;
+    
+    @MockitoBean
+    private RateLimitingFilter rateLimitingFilter;
+    
+    @MockitoBean
+    private RefreshTokenService refreshTokenService;
+    
+    @MockitoBean
+    private UserService userService;
     
     private LoginRequest loginRequest;
     private AuthResponse authResponse;

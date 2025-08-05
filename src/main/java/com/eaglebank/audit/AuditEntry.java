@@ -71,6 +71,7 @@ public class AuditEntry {
     public enum AuditAction {
         LOGIN,
         LOGOUT,
+        TOKEN_REFRESH,
         CREATE,
         READ,
         UPDATE,

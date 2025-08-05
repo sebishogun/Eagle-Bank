@@ -11,6 +11,10 @@ import com.eaglebank.entity.User;
 import com.eaglebank.exception.InsufficientFundsException;
 import com.eaglebank.exception.ResourceNotFoundException;
 import com.eaglebank.exception.ForbiddenException;
+import com.eaglebank.metrics.TransactionMetricsCollector;
+import com.eaglebank.pattern.observer.EventPublisher;
+import com.eaglebank.pattern.strategy.TransactionStrategy;
+import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.repository.AccountRepository;
 import com.eaglebank.repository.TransactionRepository;
 import com.eaglebank.util.UuidGenerator;
@@ -45,6 +49,18 @@ class TransactionServiceTest {
 
     @Mock
     private AccountRepository accountRepository;
+    
+    @Mock
+    private TransactionStrategyFactory strategyFactory;
+    
+    @Mock
+    private TransactionStrategy transactionStrategy;
+    
+    @Mock
+    private EventPublisher eventPublisher;
+    
+    @Mock
+    private TransactionMetricsCollector metricsCollector;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -99,6 +115,9 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(strategyFactory.getStrategy(TransactionType.DEPOSIT)).thenReturn(transactionStrategy);
+        when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("1500.00"));
+        // Remove unnecessary stubbing - not used in the service
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -129,6 +148,9 @@ class TransactionServiceTest {
         testTransaction.setBalanceAfter(new BigDecimal("700.00"));
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL)).thenReturn(transactionStrategy);
+        when(transactionStrategy.calculateNewBalance(testAccount, request.getAmount())).thenReturn(new BigDecimal("700.00"));
+        // Remove unnecessary stubbing - not used in the service
         when(transactionRepository.save(any(Transaction.class))).thenReturn(testTransaction);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -154,6 +176,9 @@ class TransactionServiceTest {
                 .build();
 
         when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL)).thenReturn(transactionStrategy);
+        doThrow(new InsufficientFundsException("Insufficient funds"))
+                .when(transactionStrategy).validateTransaction(testAccount, request.getAmount());
 
         assertThatThrownBy(() -> transactionService.createTransaction(userId, accountId, request))
                 .isInstanceOf(InsufficientFundsException.class)
