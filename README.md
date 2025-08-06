@@ -44,11 +44,11 @@ mvn clean test jacoco:report
 ```
 
 ### Test Coverage
-- **Overall Coverage**: 74% instruction coverage, 53% branch coverage
-- **339 Tests**: Comprehensive unit and integration test suite
+- **Overall Coverage**: 74% instruction coverage, 54% branch coverage
+- **346 Tests**: Comprehensive unit and integration test suite (including 7 concurrent transaction tests)
 - **JaCoCo Reports**: Generated in `target/site/jacoco/index.html`
 - **Key Coverage Metrics**:
-  - Services: 66% coverage (core business logic)
+  - Services: 67% coverage (core business logic)
   - Security: 78% coverage (authentication/authorization)
   - Metrics: 93% coverage (monitoring system)
   - Patterns: 89% coverage (strategy patterns)
@@ -104,6 +104,11 @@ The API has been designed with extensibility in mind, implementing numerous addi
 - **Database Schema Management**: Hibernate ddl-auto with validation in production
 - **Distributed Scheduling**: ShedLock for safe scheduled job execution in clusters
 - **Transaction Management**: Spring @Transactional for ACID compliance
+- **Concurrency Control**: 
+  - Optimistic locking with @Version for all entities
+  - Pessimistic locking for critical financial operations
+  - Deadlock prevention in transfers through ordered lock acquisition
+  - Comprehensive concurrent transaction testing
 
 #### Performance & Scalability
 - **Caching Layer**: Spring Cache with configurable TTL for frequently accessed data

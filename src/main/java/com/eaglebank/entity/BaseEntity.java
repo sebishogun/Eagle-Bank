@@ -23,6 +23,10 @@ public abstract class BaseEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
     
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+    
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -145,7 +145,8 @@ public class AccountService {
     @Auditable(action = AuditEntry.AuditAction.UPDATE, entityType = "Account", entityIdParam = "1")
     @CacheEvict(value = {ACCOUNTS_CACHE, USER_ACCOUNTS_CACHE}, key = "#accountId")
     public AccountResponse updateAccount(UUID userId, UUID accountId, UpdateAccountRequest request) {
-        Account account = accountRepository.findById(accountId)
+        // Use pessimistic lock to prevent concurrent updates
+        Account account = accountRepository.findByIdWithLock(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
         
         validateAccountOwnership(account, userId);

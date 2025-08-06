@@ -209,7 +209,7 @@ class AccountServiceTest {
                 .accountType(AccountType.SAVINGS)
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canUpdate(testAccount)).thenReturn(true);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
@@ -226,7 +226,7 @@ class AccountServiceTest {
                 .accountType(AccountType.SAVINGS)
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> accountService.updateAccount(userId, accountId, request))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -240,7 +240,7 @@ class AccountServiceTest {
                 .accountType(AccountType.SAVINGS)
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
 
         assertThatThrownBy(() -> accountService.updateAccount(otherUserId, accountId, request))
                 .isInstanceOf(ForbiddenException.class)
@@ -309,7 +309,7 @@ class AccountServiceTest {
                 .statusChangeReason("Customer request")
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountRepository.save(any(Account.class))).thenReturn(testAccount);
 
@@ -328,7 +328,7 @@ class AccountServiceTest {
                 .accountName("New Name")
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canUpdate(testAccount)).thenReturn(false);
         when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is frozen. Please contact customer service.");

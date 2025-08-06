@@ -123,7 +123,7 @@ class TransactionServiceTest {
                 .description("Salary deposit")
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canDeposit(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.DEPOSIT, testAccount)).thenReturn(transactionStrategy);
@@ -157,7 +157,7 @@ class TransactionServiceTest {
         testTransaction.setAmount(new BigDecimal("300.00"));
         testTransaction.setBalanceAfter(new BigDecimal("700.00"));
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
@@ -186,7 +186,7 @@ class TransactionServiceTest {
                 .description("Large withdrawal")
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(true);
         when(strategyFactory.getStrategy(TransactionType.WITHDRAWAL, testAccount)).thenReturn(transactionStrategy);
@@ -207,7 +207,7 @@ class TransactionServiceTest {
                 .amount(new BigDecimal("100.00"))
                 .build();
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.empty());
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.createTransaction(userId, accountId, request))
                 .isInstanceOf(ResourceNotFoundException.class)
@@ -222,7 +222,7 @@ class TransactionServiceTest {
                 .build();
 
         UUID otherUserId = UuidGenerator.generateUuidV7();
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
 
         assertThatThrownBy(() -> transactionService.createTransaction(otherUserId, accountId, request))
                 .isInstanceOf(ForbiddenException.class)
@@ -346,7 +346,7 @@ class TransactionServiceTest {
                 
         testAccount.setStatus(Account.AccountStatus.FROZEN);
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canWithdraw(testAccount, request.getAmount())).thenReturn(false);
         when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is frozen. Please contact customer service.");
@@ -369,7 +369,7 @@ class TransactionServiceTest {
                 
         testAccount.setStatus(Account.AccountStatus.CLOSED);
 
-        when(accountRepository.findById(accountId)).thenReturn(Optional.of(testAccount));
+        when(accountRepository.findByIdWithLock(accountId)).thenReturn(Optional.of(testAccount));
         when(statusStrategyFactory.getStrategy(testAccount)).thenReturn(accountStatusStrategy);
         when(accountStatusStrategy.canDeposit(testAccount, request.getAmount())).thenReturn(false);
         when(accountStatusStrategy.getRestrictionReason()).thenReturn("Account is closed. No operations are allowed.");

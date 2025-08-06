@@ -66,8 +66,8 @@ public class TransactionService {
             throw new IllegalArgumentException("Amount must be positive");
         }
         
-        // Find and validate account
-        Account account = accountRepository.findById(accountId)
+        // Find and validate account with pessimistic lock to prevent concurrent modifications
+        Account account = accountRepository.findByIdWithLock(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + accountId));
         
         // Check authorization
@@ -360,13 +360,24 @@ public class TransactionService {
             throw new IllegalArgumentException("Transfer amount must be positive");
         }
         
-        // Find source account
-        Account sourceAccount = accountRepository.findById(request.getSourceAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+        // Lock accounts in consistent order (by UUID comparison) to prevent deadlocks
+        // Always lock the "smaller" UUID first
+        Account sourceAccount;
+        Account targetAccount;
         
-        // Find target account
-        Account targetAccount = accountRepository.findById(request.getTargetAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+        if (request.getSourceAccountId().compareTo(request.getTargetAccountId()) < 0) {
+            // Source UUID is smaller, lock source first then target
+            sourceAccount = accountRepository.findByIdWithLock(request.getSourceAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+            targetAccount = accountRepository.findByIdWithLock(request.getTargetAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+        } else {
+            // Target UUID is smaller, lock target first then source
+            targetAccount = accountRepository.findByIdWithLock(request.getTargetAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+            sourceAccount = accountRepository.findByIdWithLock(request.getSourceAccountId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+        }
         
         // Validate user owns source account
         if (!sourceAccount.getUser().getId().equals(userId)) {

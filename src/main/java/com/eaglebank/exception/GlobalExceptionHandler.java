@@ -1,8 +1,12 @@
 package com.eaglebank.exception;
 
+import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PessimisticLockException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -130,6 +134,30 @@ public class GlobalExceptionHandler {
                 .message(message)
                 .build();
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+    
+    @ExceptionHandler({OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLockException(Exception ex) {
+        log.warn("Optimistic lock conflict: {}", ex.getMessage());
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.CONFLICT.value())
+                .error("Conflict")
+                .message("The resource was modified by another user. Please refresh and try again.")
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+    
+    @ExceptionHandler({PessimisticLockException.class, CannotAcquireLockException.class})
+    public ResponseEntity<ErrorResponse> handlePessimisticLockException(Exception ex) {
+        log.warn("Pessimistic lock timeout: {}", ex.getMessage());
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.LOCKED.value())
+                .error("Locked")
+                .message("The resource is currently being modified by another user. Please try again in a moment.")
+                .build();
+        return new ResponseEntity<>(errorResponse, HttpStatus.LOCKED);
     }
     
     @ExceptionHandler(Exception.class)

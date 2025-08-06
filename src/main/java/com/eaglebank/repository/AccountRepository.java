@@ -3,10 +3,13 @@ package com.eaglebank.repository;
 import com.eaglebank.dto.response.AccountTransactionSummary;
 import com.eaglebank.entity.Account;
 import com.eaglebank.entity.Transaction;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,6 +37,23 @@ public interface AccountRepository extends JpaRepository<Account, UUID>, JpaSpec
     boolean existsByAccountNumber(String accountNumber);
     
     boolean existsByIdAndUserId(UUID id, UUID userId);
+    
+    // Concurrent access methods for financial operations
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Account a WHERE a.id = :id")
+    Optional<Account> findByIdWithLock(@Param("id") UUID id);
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT a FROM Account a WHERE a.id = :id AND a.user.id = :userId")
+    Optional<Account> findByIdAndUserIdWithLock(@Param("id") UUID id, @Param("userId") UUID userId);
+    
+    @Modifying
+    @Query("UPDATE Account a SET a.balance = a.balance + :amount WHERE a.id = :id AND (a.balance + :amount >= 0 OR a.accountType = 'CREDIT')")
+    int updateBalanceAtomic(@Param("id") UUID id, @Param("amount") BigDecimal amount);
+    
+    @Modifying
+    @Query("UPDATE Account a SET a.balance = :balance, a.version = a.version + 1 WHERE a.id = :id AND a.version = :version")
+    int updateBalanceOptimistic(@Param("id") UUID id, @Param("balance") BigDecimal balance, @Param("version") Long version);
     
     // Count queries
     long countByUserId(UUID userId);
