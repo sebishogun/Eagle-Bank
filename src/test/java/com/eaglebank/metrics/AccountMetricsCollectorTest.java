@@ -35,14 +35,16 @@ class AccountMetricsCollectorTest {
         collector.recordAccountCreated(Account.AccountType.SAVINGS, new BigDecimal("1000.00"));
         
         Map<String, Object> metrics = collector.collect();
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
         
         assertNotNull(metrics);
-        assertEquals(1L, metrics.get("total_accounts"));
-        assertEquals(1L, metrics.get("active_accounts"));
-        assertEquals(1000L, metrics.get("total_balance"));
-        assertEquals(1000.0, metrics.get("average_balance"));
+        assertNotNull(sessionMetrics);
+        assertEquals(1L, sessionMetrics.get("total_accounts"));
+        assertEquals(1L, sessionMetrics.get("active_accounts"));
+        assertEquals(1000L, sessionMetrics.get("total_balance"));
+        assertEquals(1000.0, sessionMetrics.get("average_balance"));
         
-        Map<String, Object> byType = (Map<String, Object>) metrics.get("by_type");
+        Map<String, Object> byType = (Map<String, Object>) sessionMetrics.get("by_type");
         Map<String, Object> savings = (Map<String, Object>) byType.get("savings");
         assertEquals(1L, savings.get("count"));
         assertEquals(1L, savings.get("new_accounts"));
@@ -59,12 +61,13 @@ class AccountMetricsCollectorTest {
         collector.recordAccountClosed(Account.AccountType.CHECKING, new BigDecimal("2000.00"));
         
         Map<String, Object> metrics = collector.collect();
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
         
-        assertEquals(1L, metrics.get("total_accounts"));
-        assertEquals(1L, metrics.get("active_accounts"));
-        assertEquals(3000L, metrics.get("total_balance"));
+        assertEquals(1L, sessionMetrics.get("total_accounts"));
+        assertEquals(1L, sessionMetrics.get("active_accounts"));
+        assertEquals(3000L, sessionMetrics.get("total_balance"));
         
-        Map<String, Object> byType = (Map<String, Object>) metrics.get("by_type");
+        Map<String, Object> byType = (Map<String, Object>) sessionMetrics.get("by_type");
         Map<String, Object> checking = (Map<String, Object>) byType.get("checking");
         assertEquals(0L, checking.get("count"));
         assertEquals(1L, checking.get("closed_accounts"));
@@ -80,8 +83,9 @@ class AccountMetricsCollectorTest {
         collector.recordBalanceUpdate(new BigDecimal("1000.00"), new BigDecimal("1500.00"));
         
         Map<String, Object> metrics = collector.collect();
-        assertEquals(1500L, metrics.get("total_balance"));
-        assertEquals(1500.0, metrics.get("average_balance"));
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
+        assertEquals(1500L, sessionMetrics.get("total_balance"));
+        assertEquals(1500.0, sessionMetrics.get("average_balance"));
     }
     
     @Test
@@ -95,9 +99,10 @@ class AccountMetricsCollectorTest {
         collector.updateAccountStatus(true, false);
         
         Map<String, Object> metrics = collector.collect();
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
         // total_accounts tracks active accounts in the current implementation
-        assertEquals(1L, metrics.get("total_accounts"));
-        assertEquals(1L, metrics.get("active_accounts"));
+        assertEquals(1L, sessionMetrics.get("total_accounts"));
+        assertEquals(1L, sessionMetrics.get("active_accounts"));
     }
     
     @Test
@@ -109,18 +114,20 @@ class AccountMetricsCollectorTest {
         collector.recordAccountCreated(Account.AccountType.SAVINGS, new BigDecimal("3000.00"));
         
         Map<String, Object> metrics = collector.collect();
-        assertEquals(2000.0, metrics.get("average_balance"));
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
+        assertEquals(2000.0, sessionMetrics.get("average_balance"));
     }
     
     @Test
     @DisplayName("Should handle zero accounts gracefully")
     void shouldHandleZeroAccounts() {
         Map<String, Object> metrics = collector.collect();
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
         
-        assertEquals(0L, metrics.get("total_accounts"));
-        assertEquals(0L, metrics.get("active_accounts"));
-        assertEquals(0L, metrics.get("total_balance"));
-        assertEquals(0.0, metrics.get("average_balance"));
+        assertEquals(0L, sessionMetrics.get("total_accounts"));
+        assertEquals(0L, sessionMetrics.get("active_accounts"));
+        assertEquals(0L, sessionMetrics.get("total_balance"));
+        assertEquals(0.0, sessionMetrics.get("average_balance"));
     }
     
     @Test
@@ -132,7 +139,8 @@ class AccountMetricsCollectorTest {
         collector.recordAccountCreated(Account.AccountType.CHECKING, new BigDecimal("3000.00"));
         
         Map<String, Object> metrics = collector.collect();
-        Map<String, Object> byType = (Map<String, Object>) metrics.get("by_type");
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
+        Map<String, Object> byType = (Map<String, Object>) sessionMetrics.get("by_type");
         
         Map<String, Object> savings = (Map<String, Object>) byType.get("savings");
         assertEquals(2L, savings.get("count"));
@@ -154,13 +162,14 @@ class AccountMetricsCollectorTest {
         collector.reset();
         
         Map<String, Object> metrics = collector.collect();
+        Map<String, Object> sessionMetrics = (Map<String, Object>) metrics.get("session_metrics");
         
         // With Prometheus, counters remain after reset
-        assertEquals(2L, metrics.get("total_accounts"));
-        assertEquals(3000L, metrics.get("total_balance"));
+        assertEquals(2L, sessionMetrics.get("total_accounts"));
+        assertEquals(3000L, sessionMetrics.get("total_balance"));
         
         // Counters in byType also remain (Prometheus behavior)
-        Map<String, Object> byType = (Map<String, Object>) metrics.get("by_type");
+        Map<String, Object> byType = (Map<String, Object>) sessionMetrics.get("by_type");
         Map<String, Object> savings = (Map<String, Object>) byType.get("savings");
         assertEquals(1L, savings.get("new_accounts"));
         
