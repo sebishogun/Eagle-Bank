@@ -2,6 +2,19 @@
 
 This document describes the comprehensive enterprise patterns architecture implemented in the Eagle Bank API.
 
+## Pattern Usage Status
+
+### Actively Used in Production
+- **Strategy Pattern** - Transaction processing algorithms
+- **Factory Pattern** - Account creation with business rules
+- **Specification Pattern** - Complex database queries
+- **Observer Pattern** - Event-driven architecture
+
+### Demonstration/Available (Not actively used)
+- **Command Pattern** - Available for undoable operations
+- **Chain of Responsibility** - Available for validation pipelines
+- **Decorator Pattern** - Available for cross-cutting concerns
+
 ## Design Patterns Implemented
 
 ### 1. Strategy Pattern
@@ -153,6 +166,72 @@ CreateAccountCommand command = new CreateAccountCommand(accountService, userId, 
 AccountResponse account = commandInvoker.execute(command);
 // Later...
 commandInvoker.undo(); // Reverses the account creation
+```
+
+## Concurrency Control Patterns
+
+### Optimistic Locking
+**Location**: `com.eaglebank.entity.BaseEntity`
+- **Purpose**: Detect concurrent modifications at commit time
+- **Implementation**: `@Version` field on all entities
+- **Usage**: Prevents lost updates when multiple users modify the same resource
+- **Exception Handling**: `OptimisticLockException` returns HTTP 409 Conflict
+
+### Pessimistic Locking
+**Location**: Repository layer methods
+- **Purpose**: Prevent concurrent access to critical resources
+- **Implementation**: 
+  - `findByIdWithLock()` methods using `@Lock(LockModeType.PESSIMISTIC_WRITE)`
+  - Database-level row locks with `SELECT ... FOR UPDATE`
+- **Usage**: 
+  - Financial transactions (deposits, withdrawals, transfers)
+  - Account status updates
+- **Exception Handling**: `PessimisticLockException` returns HTTP 423 Locked
+
+### Deadlock Prevention
+**Strategy**: Ordered lock acquisition
+- **Implementation**: Locks acquired in consistent UUID order for transfers
+- **Code Example**:
+```java
+// Always lock accounts in UUID order to prevent deadlocks
+if (sourceId.compareTo(targetId) < 0) {
+    lockAccount(sourceId);
+    lockAccount(targetId);
+} else {
+    lockAccount(targetId);
+    lockAccount(sourceId);
+}
+```
+
+## Complex Search with Specifications
+
+### Transaction Search
+**Endpoints**: 
+- `GET /v1/accounts/{id}/transactions` - Query parameter based
+- `POST /v1/accounts/{id}/transactions/search` - Request body based
+
+**Specification Examples**:
+```java
+// Complex transaction search
+Specification<Transaction> spec = TransactionSpecifications
+    .forAccount(accountId)
+    .and(TransactionSpecifications.transactedBetween(startDate, endDate))
+    .and(TransactionSpecifications.amountGreaterThan(minAmount))
+    .and(TransactionSpecifications.ofType(TransactionType.DEPOSIT));
+```
+
+### Account Search
+**Admin Endpoints**:
+- High-value accounts: `GET /admin/accounts/high-value`
+- Dormant accounts: `GET /admin/accounts/dormant`
+
+**Specification Examples**:
+```java
+// Find accounts with recent high-value transactions
+Specification<Account> spec = AccountSpecifications
+    .activeAccounts()
+    .and(AccountSpecifications.hasHighValueTransaction(threshold))
+    .and(AccountSpecifications.hasRecentTransactions(since));
 ```
 
 ## Testing
