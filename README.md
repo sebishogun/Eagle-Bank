@@ -43,6 +43,17 @@ mvn test
 mvn clean test jacoco:report
 ```
 
+### Test Coverage
+- **Overall Coverage**: 74% instruction coverage, 53% branch coverage
+- **339 Tests**: Comprehensive unit and integration test suite
+- **JaCoCo Reports**: Generated in `target/site/jacoco/index.html`
+- **Key Coverage Metrics**:
+  - Services: 66% coverage (core business logic)
+  - Security: 78% coverage (authentication/authorization)
+  - Metrics: 93% coverage (monitoring system)
+  - Patterns: 89% coverage (strategy patterns)
+  - Cache: 90% coverage (caching layer)
+
 ## Authentication
 
 1. Create user: POST /v1/users
