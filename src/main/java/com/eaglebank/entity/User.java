@@ -39,9 +39,19 @@ public class User extends BaseEntity {
     @Column(length = 500)
     private String address;
     
+    @Column(nullable = false, length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'USER'")
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Role role = Role.USER;
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Account> accounts = new ArrayList<>();
+    
+    public enum Role {
+        USER,
+        ADMIN
+    }
     
     @PrePersist
     private void generateId() {

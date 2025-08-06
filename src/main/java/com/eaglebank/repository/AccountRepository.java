@@ -40,6 +40,10 @@ public interface AccountRepository extends JpaRepository<Account, UUID>, JpaSpec
     
     long countByUserIdAndAccountType(UUID userId, String accountType);
     
+    long countByAccountType(Account.AccountType accountType);
+    
+    long countByAccountTypeAndStatus(Account.AccountType accountType, Account.AccountStatus status);
+    
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.account.id = :accountId")
     long countTransactionsByAccountId(@Param("accountId") UUID accountId);
     
@@ -49,6 +53,9 @@ public interface AccountRepository extends JpaRepository<Account, UUID>, JpaSpec
     
     @Query("SELECT SUM(a.balance) FROM Account a WHERE a.user.id = :userId AND a.accountType = :accountType")
     BigDecimal getTotalBalanceByUserIdAndType(@Param("userId") UUID userId, @Param("accountType") String accountType);
+    
+    @Query("SELECT COALESCE(SUM(a.balance), 0) FROM Account a WHERE a.accountType = :accountType AND a.status = :status")
+    BigDecimal sumBalanceByAccountTypeAndStatus(@Param("accountType") Account.AccountType accountType, @Param("status") Account.AccountStatus status);
     
     // Advanced queries
     List<Account> findByUserIdAndAccountType(UUID userId, String accountType);

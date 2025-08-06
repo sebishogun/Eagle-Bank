@@ -23,11 +23,12 @@ public class UserPrincipal implements UserDetails {
     private Collection<? extends GrantedAuthority> authorities;
     
     public static UserPrincipal create(User user) {
+        String roleName = "ROLE_" + user.getRole().name();
         return UserPrincipal.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .password(user.getPassword())
-                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")))
+                .authorities(Collections.singletonList(new SimpleGrantedAuthority(roleName)))
                 .build();
     }
     

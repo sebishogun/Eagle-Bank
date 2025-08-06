@@ -141,6 +141,7 @@ public class UserService {
                 .lastName(user.getLastName())
                 .phoneNumber(user.getPhoneNumber())
                 .address(user.getAddress())
+                .role(user.getRole().name())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

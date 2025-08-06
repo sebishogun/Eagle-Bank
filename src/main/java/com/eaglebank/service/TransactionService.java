@@ -139,7 +139,7 @@ public class TransactionService {
 
 
     @Transactional(readOnly = true)
-    @Cacheable(value = TRANSACTIONS_CACHE, key = "#transactionId")
+    @Cacheable(value = TRANSACTIONS_CACHE, key = "#accountId + '_' + #transactionId")
     @Auditable(action = AuditEntry.AuditAction.READ, entityType = "Transaction", entityIdParam = "2")
     public TransactionResponse getTransactionById(UUID userId, UUID accountId, UUID transactionId) {
         Transaction transaction = transactionRepository.findById(transactionId)

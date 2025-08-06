@@ -1,7 +1,6 @@
 package com.eaglebank.pattern.strategy;
 
 import com.eaglebank.entity.Account;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +13,6 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class AccountStatusStrategyFactory {
     
     private final Map<Account.AccountStatus, AccountStatusStrategy> strategies = new HashMap<>();

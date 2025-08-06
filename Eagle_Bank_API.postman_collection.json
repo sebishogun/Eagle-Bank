@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "eagle-bank-api-collection",
-    "name": "Eagle Bank API",
-    "description": "REST API for Eagle Bank - A modern banking system that allows users to manage accounts and perform transactions.\n\nThis collection includes all endpoints for user management, authentication, account management, and transactions.",
+    "_postman_id": "eagle-bank-api-complete",
+    "name": "Eagle Bank API - Complete Test Suite",
+    "description": "Comprehensive REST API test collection for Eagle Bank covering all requirements from the Take Home Test v2.\n\nIncludes:\n- All core endpoints (Users, Accounts, Transactions)\n- Authentication flows (Login, Refresh, Logout, Change Password)\n- Account status management (Active, Frozen, Closed)\n- Advanced analytics endpoints\n- Admin operations\n- Audit trail endpoints\n- Complete error scenarios with expected status codes\n- Full user lifecycle flows",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -27,6 +27,16 @@
       "type": "string"
     },
     {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "user_id",
       "value": "",
       "type": "string"
@@ -44,7 +54,7 @@
   ],
   "item": [
     {
-      "name": "Authentication",
+      "name": "1. Authentication",
       "item": [
         {
           "name": "Login",
@@ -56,14 +66,18 @@
                   "if (pm.response.code === 200) {",
                   "    var jsonData = pm.response.json();",
                   "    pm.collectionVariables.set(\"auth_token\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"refresh_token\", jsonData.refreshToken);",
                   "    pm.collectionVariables.set(\"user_id\", jsonData.userId);",
                   "    ",
                   "    pm.test(\"Status code is 200\", function () {",
                   "        pm.response.to.have.status(200);",
                   "    });",
                   "    ",
-                  "    pm.test(\"Response has token\", function () {",
+                  "    pm.test(\"Response has required fields\", function () {",
                   "        pm.expect(jsonData).to.have.property('token');",
+                  "        pm.expect(jsonData).to.have.property('refreshToken');",
+                  "        pm.expect(jsonData).to.have.property('userId');",
+                  "        pm.expect(jsonData).to.have.property('expiresIn');",
                   "    });",
                   "}"
                 ],
@@ -72,6 +86,9 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -88,12 +105,15 @@
               "host": ["{{base_url}}"],
               "path": ["auth", "login"]
             },
-            "description": "Authenticates a user and returns a JWT token"
+            "description": "Authenticates a user and returns JWT tokens"
           }
         },
         {
           "name": "Check Password Strength",
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
               {
@@ -112,11 +132,137 @@
             },
             "description": "Checks password strength and returns score with feedback"
           }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"auth_token\", jsonData.token);",
+                  "    ",
+                  "    pm.test(\"Status code is 200\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Uses refresh token to get a new access token"
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"SecurePass123!\",\n  \"newPassword\": \"NewSecurePass456!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "change-password"]
+            },
+            "description": "Changes the authenticated user's password"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Invalidates the user's refresh token"
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@eaglebank.com\",\n  \"password\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login as admin user for admin operations"
+          }
         }
       ]
     },
     {
-      "name": "User Management",
+      "name": "2. User Management",
       "item": [
         {
           "name": "Create User",
@@ -151,7 +297,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phoneNumber\": \"+1234567890\",\n  \"address\": \"123 Main St, New York, NY 10001\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/users",
@@ -163,6 +309,19 @@
         },
         {
           "name": "Get User by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "url": {
@@ -185,7 +344,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"phoneNumber\": \"+1987654321\"\n}"
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"phoneNumber\": \"+1987654321\",\n  \"address\": \"456 Park Ave, New York, NY 10022\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/users/{{user_id}}",
@@ -206,11 +365,109 @@
             },
             "description": "Deletes a user account. Users can only delete their own account and must have no active bank accounts."
           }
+        },
+        {
+          "name": "Error: Create User - Missing Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"incomplete@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": ["{{base_url}}"],
+              "path": ["users"]
+            },
+            "description": "Should return 400 Bad Request - missing required fields"
+          }
+        },
+        {
+          "name": "Error: Get Another User's Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/users/550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{base_url}}"],
+              "path": ["users", "550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "description": "Should return 403 Forbidden - accessing another user's data"
+          }
+        },
+        {
+          "name": "Error: Update Non-existent User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/users/550e8400-e29b-41d4-a716-446655440099",
+              "host": ["{{base_url}}"],
+              "path": ["users", "550e8400-e29b-41d4-a716-446655440099"]
+            },
+            "description": "Should return 404 Not Found - user doesn't exist"
+          }
         }
       ]
     },
     {
-      "name": "Account Management",
+      "name": "3. Account Management",
       "item": [
         {
           "name": "Create Account",
@@ -225,6 +482,10 @@
                   "    ",
                   "    pm.test(\"Status code is 201\", function () {",
                   "        pm.response.to.have.status(201);",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Account has correct initial status\", function () {",
+                  "        pm.expect(jsonData.status).to.eql(\"ACTIVE\");",
                   "    });",
                   "}"
                 ],
@@ -242,7 +503,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"initialBalance\": 1000.00\n}"
+              "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"accountName\": \"Primary Checking\",\n  \"initialBalance\": 1000.00,\n  \"currency\": \"USD\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/accounts",
@@ -298,7 +559,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"accountType\": \"SAVINGS\"\n}"
+              "raw": "{\n  \"accountName\": \"Main Checking Account\",\n  \"currency\": \"USD\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/accounts/{{account_id}}",
@@ -306,6 +567,126 @@
               "path": ["accounts", "{{account_id}}"]
             },
             "description": "Updates account information"
+          }
+        },
+        {
+          "name": "Freeze Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Account status is FROZEN\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"FROZEN\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"FROZEN\",\n  \"statusChangeReason\": \"Suspicious activity detected\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Freezes an account - deposits allowed, withdrawals blocked"
+          }
+        },
+        {
+          "name": "Unfreeze Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Account status is ACTIVE\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"ACTIVE\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"statusChangeReason\": \"Issue resolved after verification\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Unfreezes an account - returns to normal operation"
+          }
+        },
+        {
+          "name": "Close Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Account status is CLOSED\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"CLOSED\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLOSED\",\n  \"statusChangeReason\": \"Customer requested account closure\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}"]
+            },
+            "description": "Closes an account - no operations allowed after closure"
           }
         },
         {
@@ -319,11 +700,128 @@
             },
             "description": "Deletes a bank account. Account must have zero balance and no transaction history."
           }
+        },
+        {
+          "name": "Error: Create Account - Missing Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountName\": \"Incomplete Account\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["accounts"]
+            },
+            "description": "Should return 400 Bad Request - missing required fields"
+          }
+        },
+        {
+          "name": "Error: Access Another's Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403 or 404\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/550e8400-e29b-41d4-a716-446655440000",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "550e8400-e29b-41d4-a716-446655440000"]
+            },
+            "description": "Should return 403 Forbidden or 404 Not Found"
+          }
         }
       ]
     },
     {
-      "name": "Transactions",
+      "name": "4. Account Analytics",
+      "item": [
+        {
+          "name": "Get Activity Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/activity-summary",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "activity-summary"]
+            },
+            "description": "Retrieves transaction summaries for all user's accounts"
+          }
+        },
+        {
+          "name": "Get Recent Activity",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/accounts/recent-activity?since=2024-01-01T00:00:00",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "recent-activity"],
+              "query": [
+                {
+                  "key": "since",
+                  "value": "2024-01-01T00:00:00"
+                }
+              ]
+            },
+            "description": "Retrieves accounts with transactions since the specified date"
+          }
+        },
+        {
+          "name": "Search Accounts",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minTransactionAmount\": 100.00,\n  \"transactionType\": \"DEPOSIT\",\n  \"since\": \"2024-01-01T00:00:00\",\n  \"activeOnly\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/search",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "search"]
+            },
+            "description": "Searches accounts based on transaction criteria"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Transactions",
       "item": [
         {
           "name": "Create Deposit",
@@ -392,7 +890,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{base_url}}/accounts/{{account_id}}/transactions?page=0&size=20",
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions?page=0&size=20&sort=createdAt,desc",
               "host": ["{{base_url}}"],
               "path": ["accounts", "{{account_id}}", "transactions"],
               "query": [
@@ -403,6 +901,10 @@
                 {
                   "key": "size",
                   "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc"
                 }
               ]
             },
@@ -420,15 +922,430 @@
             },
             "description": "Retrieves details of a specific transaction"
           }
+        },
+        {
+          "name": "Search Transactions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"minAmount\": 100.00,\n  \"maxAmount\": 1000.00,\n  \"startDate\": \"2024-01-01T00:00:00\",\n  \"endDate\": \"2024-12-31T23:59:59\",\n  \"description\": \"salary\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions/search",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions", "search"]
+            },
+            "description": "Search transactions with advanced filters"
+          }
+        },
+        {
+          "name": "Deposit on Frozen Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Deposit allowed on frozen account\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 200.00,\n  \"description\": \"Deposit while frozen\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Should succeed - deposits are allowed on frozen accounts"
+          }
+        },
+        {
+          "name": "Error: Withdrawal on Frozen Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Withdrawal blocked on frozen account\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 50.00,\n  \"description\": \"Withdrawal attempt on frozen account\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Should return 400 - withdrawals blocked on frozen accounts"
+          }
+        },
+        {
+          "name": "Error: Insufficient Funds",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 422\", function () {",
+                  "    pm.response.to.have.status(422);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 100000.00,\n  \"description\": \"Large withdrawal\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Should return 422 Unprocessable Entity - insufficient funds"
+          }
+        },
+        {
+          "name": "Error: Transaction on Another's Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 100.00,\n  \"description\": \"Unauthorized deposit\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/550e8400-e29b-41d4-a716-446655440000/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "550e8400-e29b-41d4-a716-446655440000", "transactions"]
+            },
+            "description": "Should return 403 Forbidden - not account owner"
+          }
+        },
+        {
+          "name": "Error: Transaction on Closed Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 100.00,\n  \"description\": \"Deposit on closed account\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["accounts", "{{account_id}}", "transactions"]
+            },
+            "description": "Should return 400 - no transactions allowed on closed accounts"
+          }
         }
       ]
     },
     {
-      "name": "Metrics (Admin Only)",
+      "name": "6. Admin Operations",
+      "item": [
+        {
+          "name": "Find High-Value Accounts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/accounts/high-value?threshold=10000",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "accounts", "high-value"],
+              "query": [
+                {
+                  "key": "threshold",
+                  "value": "10000"
+                }
+              ]
+            },
+            "description": "Finds accounts with transactions above threshold. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Find Dormant Accounts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/admin/accounts/dormant?inactiveSince=2023-01-01T00:00:00",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "accounts", "dormant"],
+              "query": [
+                {
+                  "key": "inactiveSince",
+                  "value": "2023-01-01T00:00:00"
+                }
+              ]
+            },
+            "description": "Finds accounts with no activity since specified date. Requires ADMIN role."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Audit Trail",
+      "item": [
+        {
+          "name": "Get All Audit Entries",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit?page=0&size=50",
+              "host": ["{{base_url}}"],
+              "path": ["audit"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Retrieves all audit entries. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Get User Audit Trail",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["audit", "users", "{{user_id}}"]
+            },
+            "description": "Retrieves audit trail for a specific user. Users can view their own, admins can view any."
+          }
+        },
+        {
+          "name": "Get Account Audit Trail",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["audit", "accounts", "{{account_id}}"]
+            },
+            "description": "Retrieves audit trail for a specific account. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Filter by Action Type",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit/actions/LOGIN",
+              "host": ["{{base_url}}"],
+              "path": ["audit", "actions", "LOGIN"]
+            },
+            "description": "Filters audit entries by action type. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Query by Date Range",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit/date-range?startDate=2024-01-01T00:00:00&endDate=2024-12-31T23:59:59",
+              "host": ["{{base_url}}"],
+              "path": ["audit", "date-range"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01T00:00:00"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-12-31T23:59:59"
+                }
+              ]
+            },
+            "description": "Queries audit entries within date range. Requires ADMIN role."
+          }
+        },
+        {
+          "name": "Get Audit Statistics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/audit/stats",
+              "host": ["{{base_url}}"],
+              "path": ["audit", "stats"]
+            },
+            "description": "Retrieves audit statistics. Requires ADMIN role."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Metrics & Monitoring",
       "item": [
         {
           "name": "Get All Metrics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics",
@@ -441,6 +1358,16 @@
         {
           "name": "Get Transaction Metrics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics/transaction",
@@ -453,6 +1380,16 @@
         {
           "name": "Get Account Metrics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics/account",
@@ -465,6 +1402,16 @@
         {
           "name": "Get Authentication Metrics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics/authentication",
@@ -475,8 +1422,18 @@
           }
         },
         {
-          "name": "Get Cache Metrics",
+          "name": "Get Cache Statistics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics/cache",
@@ -489,6 +1446,16 @@
         {
           "name": "Get System Health",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": {
               "raw": "{{base_url}}/metrics/health",
@@ -501,6 +1468,16 @@
         {
           "name": "Reset Metrics",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "url": {
               "raw": "{{base_url}}/metrics/reset/transaction",
@@ -513,13 +1490,13 @@
       ]
     },
     {
-      "name": "Test Scenarios",
+      "name": "9. Complete Test Flows",
       "item": [
         {
-          "name": "Complete User Flow",
+          "name": "User Lifecycle",
           "item": [
             {
-              "name": "1. Create New User",
+              "name": "1. Create User",
               "request": {
                 "auth": {
                   "type": "noauth"
@@ -533,7 +1510,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"test.user@example.com\",\n  \"password\": \"TestPass123!\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\"\n}"
+                  "raw": "{\n  \"email\": \"lifecycle.user@example.com\",\n  \"password\": \"LifecyclePass123!\",\n  \"firstName\": \"Lifecycle\",\n  \"lastName\": \"User\",\n  \"phoneNumber\": \"+1234567890\",\n  \"address\": \"123 Test St\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/users",
@@ -543,8 +1520,11 @@
               }
             },
             {
-              "name": "2. Login as New User",
+              "name": "2. Login",
               "request": {
+                "auth": {
+                  "type": "noauth"
+                },
                 "method": "POST",
                 "header": [
                   {
@@ -554,7 +1534,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"test.user@example.com\",\n  \"password\": \"TestPass123!\"\n}"
+                  "raw": "{\n  \"email\": \"lifecycle.user@example.com\",\n  \"password\": \"LifecyclePass123!\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/auth/login",
@@ -575,7 +1555,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"initialBalance\": 5000.00\n}"
+                  "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"accountName\": \"Primary Checking\",\n  \"initialBalance\": 5000.00\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/accounts",
@@ -585,7 +1565,7 @@
               }
             },
             {
-              "name": "4. Make Deposit",
+              "name": "4. Create Savings Account",
               "request": {
                 "method": "POST",
                 "header": [
@@ -596,7 +1576,28 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 1000.00,\n  \"description\": \"Bonus payment\"\n}"
+                  "raw": "{\n  \"accountType\": \"SAVINGS\",\n  \"accountName\": \"Emergency Fund\",\n  \"initialBalance\": 10000.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts"]
+                }
+              }
+            },
+            {
+              "name": "5. Make Deposits",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 2000.00,\n  \"description\": \"Salary deposit\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
@@ -606,7 +1607,7 @@
               }
             },
             {
-              "name": "5. Make Withdrawal",
+              "name": "6. Transfer Between Accounts",
               "request": {
                 "method": "POST",
                 "header": [
@@ -617,7 +1618,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 250.00,\n  \"description\": \"Shopping\"\n}"
+                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 1000.00,\n  \"description\": \"Transfer to savings\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
@@ -625,70 +1626,22 @@
                   "path": ["accounts", "{{account_id}}", "transactions"]
                 }
               }
-            }
-          ]
-        },
-        {
-          "name": "Error Scenarios",
-          "item": [
+            },
             {
-              "name": "Invalid Login",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
+              "name": "7. Delete User (Should Fail)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot delete user with accounts\", function () {",
+                      "    pm.response.to.have.status(409);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
                   }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"email\": \"wrong@example.com\",\n  \"password\": \"WrongPassword\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/auth/login",
-                  "host": ["{{base_url}}"],
-                  "path": ["auth", "login"]
-                },
-                "description": "Should return 401 Unauthorized"
-              }
-            },
-            {
-              "name": "Insufficient Funds Withdrawal",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 100000.00,\n  \"description\": \"Large withdrawal\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{account_id}}", "transactions"]
-                },
-                "description": "Should return 422 Unprocessable Entity"
-              }
-            },
-            {
-              "name": "Access Other User's Account",
-              "request": {
-                "method": "GET",
-                "url": {
-                  "raw": "{{base_url}}/accounts/550e8400-e29b-41d4-a716-446655440000",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "550e8400-e29b-41d4-a716-446655440000"]
-                },
-                "description": "Should return 403 Forbidden or 404 Not Found"
-              }
-            },
-            {
-              "name": "Delete User with Accounts",
+                }
+              ],
               "request": {
                 "method": "DELETE",
                 "url": {
@@ -696,7 +1649,273 @@
                   "host": ["{{base_url}}"],
                   "path": ["users", "{{user_id}}"]
                 },
-                "description": "Should return 409 Conflict if user has accounts"
+                "description": "Should return 409 Conflict - user has accounts"
+              }
+            },
+            {
+              "name": "8. Close Savings Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"CLOSED\",\n  \"statusChangeReason\": \"Consolidating accounts\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{savings_account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{savings_account_id}}"]
+                }
+              }
+            },
+            {
+              "name": "9. Close Checking Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"CLOSED\",\n  \"statusChangeReason\": \"Account closure requested\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}"]
+                }
+              }
+            },
+            {
+              "name": "10. Delete User (Success)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"User deleted successfully\", function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "url": {
+                  "raw": "{{base_url}}/users/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "{{user_id}}"]
+                },
+                "description": "Should succeed now that accounts are closed"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Account Status Flow",
+          "item": [
+            {
+              "name": "1. Create Account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountType\": \"CHECKING\",\n  \"accountName\": \"Status Test Account\",\n  \"initialBalance\": 2000.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts"]
+                }
+              }
+            },
+            {
+              "name": "2. Make Normal Transactions",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 500.00,\n  \"description\": \"Regular deposit\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "3. Freeze Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"FROZEN\",\n  \"statusChangeReason\": \"Suspicious activity detected - under investigation\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}"]
+                }
+              }
+            },
+            {
+              "name": "4. Try Withdrawal (Blocked)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Withdrawal blocked\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 100.00,\n  \"description\": \"Attempted withdrawal\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "5. Make Deposit (Allowed)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Deposit allowed\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"DEPOSIT\",\n  \"amount\": 200.00,\n  \"description\": \"Emergency deposit\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "6. Unfreeze Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"ACTIVE\",\n  \"statusChangeReason\": \"Investigation completed - no issues found\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}"]
+                }
+              }
+            },
+            {
+              "name": "7. Resume Normal Operations",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"transactionType\": \"WITHDRAWAL\",\n  \"amount\": 250.00,\n  \"description\": \"Normal withdrawal after unfreezing\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "8. Close Account",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"CLOSED\",\n  \"statusChangeReason\": \"Customer requested permanent closure\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}"]
+                }
               }
             }
           ]

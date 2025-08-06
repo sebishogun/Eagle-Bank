@@ -348,9 +348,9 @@ class TransactionControllerIntegrationTest {
                         .param("sort", "createdAt,desc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(3)))
-                .andExpect(jsonPath("$.content[0].description", is("Deposit 1"))) // Expecting ascending order
+                .andExpect(jsonPath("$.content[0].description", is("Deposit 2"))) // Most recent (descending order)
                 .andExpect(jsonPath("$.content[1].description", is("Withdrawal")))
-                .andExpect(jsonPath("$.content[2].description", is("Deposit 2"))) // Most recent
+                .andExpect(jsonPath("$.content[2].description", is("Deposit 1"))) // Oldest
                 .andExpect(jsonPath("$.totalElements", is(3)));
     }
 

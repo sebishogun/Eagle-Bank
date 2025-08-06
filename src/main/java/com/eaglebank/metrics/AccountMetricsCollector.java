@@ -1,10 +1,13 @@
 package com.eaglebank.metrics;
 
 import com.eaglebank.entity.Account;
+import com.eaglebank.service.DatabaseMetricsService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -25,6 +28,10 @@ public class AccountMetricsCollector implements MetricsCollector {
     private final AtomicLong totalBalance = new AtomicLong(0);
     private final AtomicLong totalActiveAccounts = new AtomicLong(0);
     private LocalDateTime lastResetTime = LocalDateTime.now();
+    
+    @Autowired
+    @Lazy
+    private DatabaseMetricsService databaseMetricsService;
     
     public AccountMetricsCollector(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
@@ -66,6 +73,41 @@ public class AccountMetricsCollector implements MetricsCollector {
                 .description("Average account balance")
                 .baseUnit("currency")
                 .register(meterRegistry);
+        
+        // Database metrics gauges
+        Gauge.builder("accounts.database.total_active", this, collector -> {
+                    if (collector.databaseMetricsService != null) {
+                        Object value = collector.databaseMetricsService.getDatabaseMetric("total_active_accounts");
+                        return value instanceof Number ? ((Number) value).doubleValue() : 0.0;
+                    }
+                    return 0.0;
+                })
+                .description("Total active accounts in database")
+                .register(meterRegistry);
+        
+        Gauge.builder("accounts.database.total_balance", this, collector -> {
+                    if (collector.databaseMetricsService != null) {
+                        Object value = collector.databaseMetricsService.getDatabaseMetric("total_balance");
+                        if (value instanceof BigDecimal) {
+                            return ((BigDecimal) value).doubleValue();
+                        }
+                        return value instanceof Number ? ((Number) value).doubleValue() : 0.0;
+                    }
+                    return 0.0;
+                })
+                .description("Total balance across all accounts in database")
+                .baseUnit("currency")
+                .register(meterRegistry);
+        
+        Gauge.builder("accounts.database.total", this, collector -> {
+                    if (collector.databaseMetricsService != null) {
+                        Object value = collector.databaseMetricsService.getDatabaseMetric("total_accounts");
+                        return value instanceof Number ? ((Number) value).doubleValue() : 0.0;
+                    }
+                    return 0.0;
+                })
+                .description("Total accounts in database")
+                .register(meterRegistry);
     }
     
     @Override
@@ -77,7 +119,8 @@ public class AccountMetricsCollector implements MetricsCollector {
     public Map<String, Object> collect() {
         Map<String, Object> metrics = new HashMap<>();
         
-        // Calculate totals
+        // Session metrics (since startup)
+        Map<String, Object> sessionMetrics = new HashMap<>();
         long totalCreated = 0;
         long totalClosed = 0;
         long totalActive = totalActiveAccounts.get();
@@ -99,11 +142,29 @@ public class AccountMetricsCollector implements MetricsCollector {
             byType.put(typeName, typeMetrics);
         }
         
-        metrics.put("total_accounts", totalActive);
-        metrics.put("active_accounts", totalActive);
-        metrics.put("total_balance", totalBalance.get());
-        metrics.put("average_balance", calculateAverageBalance());
-        metrics.put("by_type", byType);
+        sessionMetrics.put("total_accounts", totalActive);
+        sessionMetrics.put("active_accounts", totalActive);
+        sessionMetrics.put("total_balance", totalBalance.get());
+        sessionMetrics.put("average_balance", calculateAverageBalance());
+        sessionMetrics.put("by_type", byType);
+        sessionMetrics.put("accounts_created_session", totalCreated);
+        sessionMetrics.put("accounts_closed_session", totalClosed);
+        
+        metrics.put("session_metrics", sessionMetrics);
+        
+        // Database metrics (actual DB state)
+        if (databaseMetricsService != null) {
+            Map<String, Object> dbMetrics = databaseMetricsService.getDatabaseMetrics();
+            metrics.put("database_metrics", dbMetrics);
+            
+            // Also add key DB metrics at top level for Prometheus
+            if (dbMetrics.containsKey("total_active_accounts")) {
+                metrics.put("db_total_active_accounts", dbMetrics.get("total_active_accounts"));
+            }
+            if (dbMetrics.containsKey("total_balance")) {
+                metrics.put("db_total_balance", dbMetrics.get("total_balance"));
+            }
+        }
         
         // Time-based metrics
         Map<String, Object> timeMetrics = new HashMap<>();

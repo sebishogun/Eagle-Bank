@@ -261,6 +261,7 @@ public class AccountService {
                 .accountType(account.getAccountType())
                 .status(account.getStatus())
                 .balance(account.getBalance())
+                .currency(account.getCurrency())
                 .userId(account.getUser().getId())
                 .createdAt(account.getCreatedAt())
                 .updatedAt(account.getUpdatedAt());
