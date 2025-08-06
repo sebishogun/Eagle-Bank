@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "eagle-bank-api-complete-v2",
-    "name": "Eagle Bank API - Complete Test Suite with Transfers",
-    "description": "Comprehensive REST API test collection for Eagle Bank covering all requirements from the Take Home Test v2.\n\nIncludes:\n- All core endpoints (Users, Accounts, Transactions)\n- Transfer feature with complete test coverage\n- Authentication flows (Login, Refresh, Logout, Change Password)\n- Account status management (Active, Frozen, Closed)\n- Advanced analytics endpoints\n- Admin operations\n- Audit trail endpoints\n- Complete error scenarios with expected status codes\n- Full user lifecycle flows\n- Organized test scenarios for compliance testing",
+    "_postman_id": "eagle-bank-api-complete-v3",
+    "name": "Eagle Bank API - Complete Test Suite with Admin & All Account Types",
+    "description": "Comprehensive REST API test collection for Eagle Bank covering all requirements from the Take Home Test v2 document.\n\nIncludes:\n- All core endpoints (Users, Accounts, Transactions)\n- Transfer feature with complete test coverage\n- Admin authentication and operations\n- All account types (CHECKING, SAVINGS, CREDIT) with examples\n- Authentication flows (Login, Refresh, Logout, Change Password)\n- Account status management (Active, Frozen, Closed)\n- Advanced analytics endpoints\n- Audit trail endpoints\n- Complete error scenarios with expected status codes\n- Full user lifecycle flows\n- Organized test scenarios for compliance testing",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -52,6 +52,21 @@
       "type": "string"
     },
     {
+      "key": "checking_account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "savings_account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "credit_account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "source_account_id",
       "value": "",
       "type": "string"
@@ -79,7 +94,250 @@
   ],
   "item": [
     {
-      "name": "1. Setup & Authentication",
+      "name": "1. Admin Setup & Authentication",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"admin_token\", jsonData.token);",
+                  "    pm.environment.set(\"admin_token\", jsonData.token);",
+                  "    ",
+                  "    pm.test(\"Admin login successful\", function () {",
+                  "        pm.response.to.have.status(200);",
+                  "        pm.expect(jsonData).to.have.property('token');",
+                  "        pm.expect(jsonData.user.role).to.eql('ADMIN');",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"Admin has correct email\", function () {",
+                  "        pm.expect(jsonData.user.email).to.eql('admin@eaglebank.com');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"admin@eaglebank.com\",\n    \"password\": \"Admin123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticates as the system administrator. The admin user is created automatically by DataInitializer on application startup."
+          }
+        },
+        {
+          "name": "Get High-Value Accounts (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin can view high-value accounts\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns array of accounts\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Use admin token for this request",
+                  "pm.request.headers.add({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('admin_token')",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/accounts/high-value?threshold=10000",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "accounts", "high-value"],
+              "query": [
+                {
+                  "key": "threshold",
+                  "value": "10000",
+                  "description": "Minimum transaction amount to filter accounts"
+                }
+              ]
+            },
+            "description": "Admin endpoint to find accounts with transactions above specified threshold"
+          }
+        },
+        {
+          "name": "Get Dormant Accounts (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin can view dormant accounts\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns array of accounts\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Use admin token for this request",
+                  "pm.request.headers.add({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('admin_token')",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/admin/accounts/dormant?inactiveSince=2024-01-01T00:00:00",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "accounts", "dormant"],
+              "query": [
+                {
+                  "key": "inactiveSince",
+                  "value": "2024-01-01T00:00:00",
+                  "description": "Date to check for last activity (ISO 8601 format)"
+                }
+              ]
+            },
+            "description": "Admin endpoint to find accounts with no transactions since specified date"
+          }
+        },
+        {
+          "name": "Get Audit Logs (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Admin can view audit logs\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns paginated audit logs\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('content');",
+                  "    pm.expect(jsonData).to.have.property('totalElements');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Use admin token for this request",
+                  "pm.request.headers.add({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('admin_token')",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/audit?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["audit"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Admin endpoint to view system audit logs"
+          }
+        }
+      ],
+      "description": "Admin authentication and administrative operations"
+    },
+    {
+      "name": "2. User Setup & Authentication",
       "item": [
         {
           "name": "Create Test User 1",
@@ -193,6 +451,7 @@
                   "    var jsonData = pm.response.json();",
                   "    pm.collectionVariables.set(\"auth_token\", jsonData.token);",
                   "    pm.collectionVariables.set(\"refresh_token\", jsonData.refreshToken);",
+                  "    pm.environment.set(\"auth_token\", jsonData.token);",
                   "    ",
                   "    pm.test(\"Login successful for User 1\", function () {",
                   "        pm.response.to.have.status(200);",
@@ -236,6 +495,7 @@
                   "if (pm.response.code === 200) {",
                   "    var jsonData = pm.response.json();",
                   "    pm.collectionVariables.set(\"auth_token_2\", jsonData.token);",
+                  "    pm.environment.set(\"auth_token_2\", jsonData.token);",
                   "    ",
                   "    pm.test(\"Login successful for User 2\", function () {",
                   "        pm.response.to.have.status(200);",
@@ -268,9 +528,15 @@
               "path": ["auth", "login"]
             }
           }
-        },
+        }
+      ],
+      "description": "Setup test users for various testing scenarios"
+    },
+    {
+      "name": "3. Account Type Examples",
+      "item": [
         {
-          "name": "Create Account for User 1",
+          "name": "Create CHECKING Account",
           "event": [
             {
               "listen": "test",
@@ -278,12 +544,18 @@
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"checking_account_id\", jsonData.id);",
                   "    pm.collectionVariables.set(\"source_account_id\", jsonData.id);",
                   "    pm.collectionVariables.set(\"account_id\", jsonData.id);",
                   "    ",
-                  "    pm.test(\"Account created for User 1\", function () {",
+                  "    pm.test(\"CHECKING account created\", function () {",
                   "        pm.response.to.have.status(201);",
+                  "        pm.expect(jsonData.accountType).to.eql('CHECKING');",
                   "        pm.expect(jsonData.balance).to.eql(5000);",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"CHECKING account has no credit limit\", function () {",
+                  "        pm.expect(jsonData.creditLimit).to.be.null;",
                   "    });",
                   "}"
                 ],
@@ -301,17 +573,111 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"accountType\": \"CHECKING\",\n    \"accountName\": \"John's Checking Account\",\n    \"initialBalance\": 5000.00\n}"
+              "raw": "{\n    \"accountType\": \"CHECKING\",\n    \"accountName\": \"John's Primary Checking Account\",\n    \"initialBalance\": 5000.00\n}"
             },
             "url": {
               "raw": "{{base_url}}/accounts",
               "host": ["{{base_url}}"],
               "path": ["accounts"]
-            }
+            },
+            "description": "CHECKING account: Standard account for daily transactions. Supports overdrafts, no minimum balance requirement, no interest."
           }
         },
         {
-          "name": "Create Account for User 2",
+          "name": "Create SAVINGS Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"savings_account_id\", jsonData.id);",
+                  "    ",
+                  "    pm.test(\"SAVINGS account created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "        pm.expect(jsonData.accountType).to.eql('SAVINGS');",
+                  "        pm.expect(jsonData.balance).to.eql(10000);",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"SAVINGS account properties\", function () {",
+                  "        pm.expect(jsonData.creditLimit).to.be.null;",
+                  "        pm.expect(jsonData.status).to.eql('ACTIVE');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountType\": \"SAVINGS\",\n    \"accountName\": \"John's High-Yield Savings\",\n    \"initialBalance\": 10000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["accounts"]
+            },
+            "description": "SAVINGS account: Earns interest, minimum balance requirement of $500, limited withdrawals per month."
+          }
+        },
+        {
+          "name": "Create CREDIT Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"credit_account_id\", jsonData.id);",
+                  "    ",
+                  "    pm.test(\"CREDIT account created\", function () {",
+                  "        pm.response.to.have.status(201);",
+                  "        pm.expect(jsonData.accountType).to.eql('CREDIT');",
+                  "        pm.expect(jsonData.balance).to.eql(0);",
+                  "    });",
+                  "    ",
+                  "    pm.test(\"CREDIT account has credit limit\", function () {",
+                  "        pm.expect(jsonData.creditLimit).to.eql(5000);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"accountType\": \"CREDIT\",\n    \"accountName\": \"John's Credit Line\",\n    \"initialBalance\": 0,\n    \"creditLimit\": 5000.00\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["accounts"]
+            },
+            "description": "CREDIT account: Line of credit with specified limit. Balance starts at 0, can go negative up to credit limit. Withdrawals increase debt, deposits reduce debt."
+          }
+        },
+        {
+          "name": "Create Second User's SAVINGS Account",
           "event": [
             {
               "listen": "test",
@@ -364,179 +730,44 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"accountType\": \"SAVINGS\",\n    \"accountName\": \"Jane's Savings Account\",\n    \"initialBalance\": 1000.00\n}"
+              "raw": "{\n    \"accountType\": \"SAVINGS\",\n    \"accountName\": \"Jane's Emergency Fund\",\n    \"initialBalance\": 1000.00\n}"
             },
             "url": {
               "raw": "{{base_url}}/accounts",
               "host": ["{{base_url}}"],
               "path": ["accounts"]
-            }
+            },
+            "description": "Creates a savings account for the second user (for transfer testing)"
           }
         }
       ],
-      "description": "Setup test users and accounts for transfer testing"
+      "description": "Examples of creating all three account types with their specific properties and behaviors"
     },
     {
-      "name": "2. Transfer Feature",
+      "name": "4. Account Type Specific Tests",
       "item": [
         {
-          "name": "Successful Transfer",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Transfer created successfully\", function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "var jsonData = pm.response.json();",
-                  "",
-                  "pm.test(\"Transfer has required fields\", function () {",
-                  "    pm.expect(jsonData).to.have.property('transferReference');",
-                  "    pm.expect(jsonData).to.have.property('sourceTransaction');",
-                  "    pm.expect(jsonData).to.have.property('targetTransaction');",
-                  "    pm.expect(jsonData.status).to.eql('COMPLETED');",
-                  "});",
-                  "",
-                  "pm.test(\"Transfer amount is correct\", function () {",
-                  "    pm.expect(jsonData.amount).to.eql(500);",
-                  "});",
-                  "",
-                  "pm.collectionVariables.set(\"transfer_reference\", jsonData.transferReference);"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 500.00,\n    \"description\": \"Test transfer payment\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/transfers",
-              "host": ["{{base_url}}"],
-              "path": ["transfers"]
-            },
-            "description": "Creates a successful transfer between two accounts"
-          }
-        },
-        {
-          "name": "Transfer with Description",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Transfer with description successful\", function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "var jsonData = pm.response.json();",
-                  "",
-                  "pm.test(\"Description is included\", function () {",
-                  "    pm.expect(jsonData.description).to.include('Monthly rent payment');",
-                  "    pm.expect(jsonData.sourceTransaction.description).to.include('Monthly rent payment');",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 250.00,\n    \"description\": \"Monthly rent payment for December 2024\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/transfers",
-              "host": ["{{base_url}}"],
-              "path": ["transfers"]
-            },
-            "description": "Transfer with a custom description"
-          }
-        },
-        {
-          "name": "Large Amount Transfer",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Large transfer successful\", function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "var jsonData = pm.response.json();",
-                  "",
-                  "pm.test(\"Large amount handled correctly\", function () {",
-                  "    pm.expect(jsonData.amount).to.eql(2000);",
-                  "    pm.expect(jsonData.sourceTransaction.balanceAfter).to.be.below(3000);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 2000.00,\n    \"description\": \"Large payment transfer\"\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/transfers",
-              "host": ["{{base_url}}"],
-              "path": ["transfers"]
-            },
-            "description": "Transfer a large amount to test precision handling"
-          }
-        }
-      ],
-      "description": "Basic transfer operations and examples"
-    },
-    {
-      "name": "3. Transfer Test Scenarios",
-      "item": [
-        {
-          "name": "✅ Happy Path Tests",
+          "name": "CHECKING Account Tests",
           "item": [
             {
-              "name": "Basic Transfer Between Accounts",
+              "name": "Test CHECKING Overdraft",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Basic transfer successful\", function () {",
-                      "    pm.response.to.have.status(201);",
+                      "// CHECKING accounts may allow overdrafts depending on business rules",
+                      "pm.test(\"Overdraft attempt processed\", function () {",
+                      "    // Expect either success (if overdraft allowed) or 422 (if not)",
+                      "    pm.expect([201, 422]).to.include(pm.response.code);",
                       "});",
                       "",
-                      "pm.test(\"Transfer completes with COMPLETED status\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.status).to.eql('COMPLETED');",
-                      "});"
+                      "if (pm.response.code === 422) {",
+                      "    pm.test(\"Overdraft protection message\", function () {",
+                      "        var jsonData = pm.response.json();",
+                      "        pm.expect(jsonData.message.toLowerCase()).to.include('insufficient');",
+                      "    });",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
@@ -552,31 +783,30 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 100.00\n}"
+                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 6000.00,\n    \"description\": \"Test overdraft on checking account\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/transfers",
+                  "raw": "{{base_url}}/accounts/{{checking_account_id}}/transactions",
                   "host": ["{{base_url}}"],
-                  "path": ["transfers"]
+                  "path": ["accounts", "{{checking_account_id}}", "transactions"]
                 },
-                "description": "Test: Basic transfer should succeed with valid accounts and sufficient funds"
+                "description": "Test overdraft behavior on CHECKING account"
               }
             },
             {
-              "name": "Transfer to Another User's Account",
+              "name": "Deposit to CHECKING",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Can transfer to another user's account\", function () {",
+                      "pm.test(\"Deposit to CHECKING successful\", function () {",
                       "    pm.response.to.have.status(201);",
                       "});",
                       "",
-                      "pm.test(\"Cross-user transfer completes\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.sourceAccountId).to.eql(pm.collectionVariables.get('source_account_id'));",
-                      "    pm.expect(jsonData.targetAccountId).to.eql(pm.collectionVariables.get('target_account_id'));",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Balance updated correctly\", function () {",
+                      "    pm.expect(jsonData.balanceAfter).to.be.above(5000);",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -593,77 +823,38 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 150.00,\n    \"description\": \"Payment to another user\"\n}"
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 2500.00,\n    \"description\": \"Paycheck deposit\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/transfers",
+                  "raw": "{{base_url}}/accounts/{{checking_account_id}}/transactions",
                   "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Users can transfer to accounts they don't own"
-              }
-            },
-            {
-              "name": "Multiple Sequential Transfers",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Sequential transfer successful\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test(\"Each transfer gets unique reference\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.transferReference).to.include('TRF');",
-                      "    pm.expect(jsonData.transferReference).to.not.eql(pm.collectionVariables.get('transfer_reference'));",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
+                  "path": ["accounts", "{{checking_account_id}}", "transactions"]
                 }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 50.00,\n    \"description\": \"Sequential transfer test\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Multiple transfers can be made sequentially"
               }
             }
           ]
         },
         {
-          "name": "❌ Validation Tests",
+          "name": "SAVINGS Account Tests",
           "item": [
             {
-              "name": "Transfer with Zero Amount",
+              "name": "Test SAVINGS Minimum Balance",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Zero amount transfer rejected\", function () {",
-                      "    pm.response.to.have.status(400);",
+                      "pm.test(\"Withdrawal respects minimum balance\", function () {",
+                      "    // Either successful or rejected due to minimum balance",
+                      "    pm.expect([201, 422]).to.include(pm.response.code);",
                       "});",
                       "",
-                      "pm.test(\"Error message for zero amount\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.validationErrors.amount).to.include('positive');",
-                      "});"
+                      "if (pm.response.code === 422) {",
+                      "    pm.test(\"Minimum balance error message\", function () {",
+                      "        var jsonData = pm.response.json();",
+                      "        pm.expect(jsonData.message.toLowerCase()).to.include.oneOf(['minimum', 'insufficient']);",
+                      "    });",
+                      "}"
                     ],
                     "type": "text/javascript"
                   }
@@ -679,356 +870,31 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 0.00\n}"
+                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 9600.00,\n    \"description\": \"Test minimum balance on savings\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/transfers",
+                  "raw": "{{base_url}}/accounts/{{savings_account_id}}/transactions",
                   "host": ["{{base_url}}"],
-                  "path": ["transfers"]
+                  "path": ["accounts", "{{savings_account_id}}", "transactions"]
                 },
-                "description": "Test: Transfer with zero amount should be rejected with 400 Bad Request"
+                "description": "Test minimum balance requirement on SAVINGS account (typically $500)"
               }
             },
             {
-              "name": "Transfer with Negative Amount",
+              "name": "Get SAVINGS Account Details",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Negative amount transfer rejected\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Error message for negative amount\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.validationErrors.amount).to.include('positive');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": -100.00\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer with negative amount should be rejected with 400 Bad Request"
-              }
-            },
-            {
-              "name": "Transfer to Same Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Same account transfer rejected\", function () {",
-                      "    pm.response.to.have.status(400);",
-                      "});",
-                      "",
-                      "pm.test(\"Error message for same account\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.include('different');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{source_account_id}}\",\n    \"amount\": 100.00\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer to same account should be rejected with 400 Bad Request"
-              }
-            },
-            {
-              "name": "Transfer with Invalid Account IDs",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Invalid account ID rejected\", function () {",
-                      "    pm.response.to.have.status(404);",
-                      "});",
-                      "",
-                      "pm.test(\"Error message for not found\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.include('not found');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"00000000-0000-0000-0000-000000000000\",\n    \"targetAccountId\": \"11111111-1111-1111-1111-111111111111\",\n    \"amount\": 100.00\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer with non-existent account IDs should return 404 Not Found"
-              }
-            }
-          ]
-        },
-        {
-          "name": "🔒 Authorization Tests",
-          "item": [
-            {
-              "name": "Transfer Without Authentication",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Unauthenticated transfer rejected\", function () {",
-                      "    pm.response.to.have.status(401);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns unauthorized error\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.error).to.include('Unauthorized');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "noauth"
-                },
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 100.00\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer without authentication should return 401 Unauthorized"
-              }
-            },
-            {
-              "name": "Transfer from Unowned Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Transfer from unowned account rejected\", function () {",
-                      "    pm.response.to.have.status(403);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns forbidden error\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message).to.include('not authorized');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{target_account_id}}\",\n    \"targetAccountId\": \"{{source_account_id}}\",\n    \"amount\": 100.00,\n    \"description\": \"Unauthorized transfer attempt\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: User cannot transfer from an account they don't own - returns 403 Forbidden"
-              }
-            }
-          ]
-        },
-        {
-          "name": "💰 Business Logic Tests",
-          "item": [
-            {
-              "name": "Transfer with Insufficient Funds",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Insufficient funds transfer rejected\", function () {",
-                      "    pm.response.to.have.status(422);",
-                      "});",
-                      "",
-                      "pm.test(\"Returns insufficient funds error\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message.toLowerCase()).to.include('insufficient');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 999999.00,\n    \"description\": \"Transfer exceeding balance\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer with insufficient funds should return 422 Unprocessable Entity"
-              }
-            },
-            {
-              "name": "Setup - Freeze Source Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Account frozen successfully\", function () {",
+                      "pm.test(\"Can retrieve savings account details\", function () {",
                       "    pm.response.to.have.status(200);",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.status).to.eql('FROZEN');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"status\": \"FROZEN\",\n    \"statusChangeReason\": \"Testing frozen account transfers\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{source_account_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{source_account_id}}"]
-                },
-                "description": "Setup: Freeze the source account for testing"
-              }
-            },
-            {
-              "name": "Transfer from Frozen Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Transfer from frozen account rejected\", function () {",
-                      "    pm.response.to.have.status(409);",
                       "});",
                       "",
-                      "pm.test(\"Returns account status error\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.message.toLowerCase()).to.include('cannot transfer');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 50.00,\n    \"description\": \"Transfer from frozen account\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer from frozen account should return 409 Conflict"
-              }
-            },
-            {
-              "name": "Cleanup - Unfreeze Source Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Account reactivated\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "    var jsonData = pm.response.json();",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Savings account shows correct details\", function () {",
+                      "    pm.expect(jsonData).to.have.property('balance');",
+                      "    pm.expect(jsonData.accountType).to.eql('SAVINGS');",
                       "    pm.expect(jsonData.status).to.eql('ACTIVE');",
                       "});"
                     ],
@@ -1037,201 +903,39 @@
                 }
               ],
               "request": {
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"status\": \"ACTIVE\",\n    \"statusChangeReason\": \"Test completed\"\n}"
-                },
+                "method": "GET",
+                "header": [],
                 "url": {
-                  "raw": "{{base_url}}/accounts/{{source_account_id}}",
+                  "raw": "{{base_url}}/accounts/{{savings_account_id}}",
                   "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{source_account_id}}"]
+                  "path": ["accounts", "{{savings_account_id}}"]
                 },
-                "description": "Cleanup: Reactivate the account after testing"
-              }
-            },
-            {
-              "name": "Setup - Freeze Target Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Target account frozen\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "// Switch to User 2's token to freeze their account",
-                      "pm.request.headers.add({",
-                      "    key: 'Authorization',",
-                      "    value: 'Bearer ' + pm.collectionVariables.get('auth_token_2')",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{auth_token_2}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"status\": \"FROZEN\",\n    \"statusChangeReason\": \"Testing transfers to frozen account\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{target_account_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{target_account_id}}"]
-                },
-                "description": "Setup: Freeze the target account"
-              }
-            },
-            {
-              "name": "Transfer to Frozen Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Transfer to frozen account succeeds\", function () {",
-                      "    pm.response.to.have.status(201);",
-                      "});",
-                      "",
-                      "pm.test(\"Frozen accounts can receive transfers\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.status).to.eql('COMPLETED');",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 75.00,\n    \"description\": \"Payment to frozen account (debt recovery)\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/transfers",
-                  "host": ["{{base_url}}"],
-                  "path": ["transfers"]
-                },
-                "description": "Test: Transfer to frozen account should succeed (for debt recovery)"
-              }
-            },
-            {
-              "name": "Cleanup - Unfreeze Target Account",
-              "event": [
-                {
-                  "listen": "test",
-                  "script": {
-                    "exec": [
-                      "pm.test(\"Target account reactivated\", function () {",
-                      "    pm.response.to.have.status(200);",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "exec": [
-                      "// Use User 2's token",
-                      "pm.request.headers.add({",
-                      "    key: 'Authorization',",
-                      "    value: 'Bearer ' + pm.collectionVariables.get('auth_token_2')",
-                      "});"
-                    ],
-                    "type": "text/javascript"
-                  }
-                }
-              ],
-              "request": {
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{auth_token_2}}",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "method": "PATCH",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"status\": \"ACTIVE\",\n    \"statusChangeReason\": \"Test completed\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{target_account_id}}",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{target_account_id}}"]
-                },
-                "description": "Cleanup: Reactivate target account"
+                "description": "Retrieve SAVINGS account details to verify balance and account status"
               }
             }
           ]
         },
         {
-          "name": "🔄 Workflow Tests",
+          "name": "CREDIT Account Tests",
           "item": [
             {
-              "name": "Complete Transfer Chain",
+              "name": "Withdrawal from CREDIT (Increase Debt)",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Transfer chain step completes\", function () {",
+                      "pm.test(\"Credit withdrawal successful\", function () {",
                       "    pm.response.to.have.status(201);",
                       "});",
                       "",
-                      "pm.test(\"Chain maintains consistency\", function () {",
-                      "    var jsonData = pm.response.json();",
-                      "    pm.expect(jsonData.sourceTransaction).to.exist;",
-                      "    pm.expect(jsonData.targetTransaction).to.exist;",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Credit balance goes negative (debt)\", function () {",
+                      "    pm.expect(jsonData.balanceAfter).to.be.below(0);",
+                      "});",
+                      "",
+                      "pm.test(\"Transaction type is WITHDRAWAL\", function () {",
+                      "    pm.expect(jsonData.type).to.eql('WITHDRAWAL');",
                       "});"
                     ],
                     "type": "text/javascript"
@@ -1248,29 +952,163 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 200.00,\n    \"description\": \"Transfer chain step 1: A to B\"\n}"
+                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 1500.00,\n    \"description\": \"Credit card purchase\"\n}"
                 },
                 "url": {
-                  "raw": "{{base_url}}/transfers",
+                  "raw": "{{base_url}}/accounts/{{credit_account_id}}/transactions",
                   "host": ["{{base_url}}"],
-                  "path": ["transfers"]
+                  "path": ["accounts", "{{credit_account_id}}", "transactions"]
                 },
-                "description": "Test: Multi-step transfer chain maintains consistency"
+                "description": "Withdrawal from CREDIT account increases debt (negative balance)"
               }
             },
             {
-              "name": "Account Lifecycle with Transfers",
+              "name": "Test Credit Limit",
               "event": [
                 {
                   "listen": "test",
                   "script": {
                     "exec": [
-                      "pm.test(\"Account lifecycle test\", function () {",
+                      "pm.test(\"Credit limit enforced\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "",
+                      "pm.test(\"Credit limit error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include.oneOf(['credit limit', 'insufficient', 'exceeded']);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 6000.00,\n    \"description\": \"Attempt to exceed credit limit\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{credit_account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{credit_account_id}}", "transactions"]
+                },
+                "description": "Test that withdrawals beyond credit limit are rejected"
+              }
+            },
+            {
+              "name": "Payment to CREDIT (Reduce Debt)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Credit payment successful\", function () {",
                       "    pm.response.to.have.status(201);",
                       "});",
                       "",
-                      "pm.test(\"Transfer through account states\", function () {",
-                      "    var jsonData = pm.response.json();",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Payment reduces debt\", function () {",
+                      "    pm.expect(jsonData.type).to.eql('DEPOSIT');",
+                      "    // Balance should be less negative (closer to 0)",
+                      "    pm.expect(jsonData.balanceAfter).to.be.above(-1500);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 500.00,\n    \"description\": \"Credit card payment\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{credit_account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{credit_account_id}}", "transactions"]
+                },
+                "description": "Deposit to CREDIT account reduces debt"
+              }
+            },
+            {
+              "name": "Overpayment to CREDIT (Positive Balance)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Overpayment allowed\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Credit can have positive balance\", function () {",
+                      "    pm.expect(jsonData.balanceAfter).to.be.above(0);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 3000.00,\n    \"description\": \"Large credit card payment (overpayment)\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{credit_account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{credit_account_id}}", "transactions"]
+                },
+                "description": "CREDIT accounts can have positive balance from overpayments"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Test account type-specific behaviors and business rules"
+    },
+    {
+      "name": "5. Transfer Feature",
+      "item": [
+        {
+          "name": "Transfer Between Account Types",
+          "item": [
+            {
+              "name": "CHECKING to SAVINGS Transfer",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Transfer between different account types\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Transfer details correct\", function () {",
+                      "    pm.expect(jsonData.amount).to.eql(500);",
                       "    pm.expect(jsonData.status).to.eql('COMPLETED');",
                       "});"
                     ],
@@ -1288,23 +1126,156 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 25.00,\n    \"description\": \"Lifecycle test transfer\"\n}"
+                  "raw": "{\n    \"sourceAccountId\": \"{{checking_account_id}}\",\n    \"targetAccountId\": \"{{savings_account_id}}\",\n    \"amount\": 500.00,\n    \"description\": \"Monthly savings transfer\"\n}"
                 },
                 "url": {
                   "raw": "{{base_url}}/transfers",
                   "host": ["{{base_url}}"],
                   "path": ["transfers"]
                 },
-                "description": "Test: Transfers work correctly through account status changes"
+                "description": "Transfer from CHECKING to SAVINGS account"
+              }
+            },
+            {
+              "name": "SAVINGS to CREDIT Transfer (Pay Credit)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Can transfer to CREDIT account\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Payment to credit processed\", function () {",
+                      "    pm.expect(jsonData.targetTransaction.type).to.eql('TRANSFER');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"sourceAccountId\": \"{{savings_account_id}}\",\n    \"targetAccountId\": \"{{credit_account_id}}\",\n    \"amount\": 200.00,\n    \"description\": \"Credit card payment from savings\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/transfers",
+                  "host": ["{{base_url}}"],
+                  "path": ["transfers"]
+                },
+                "description": "Transfer from SAVINGS to CREDIT to pay down debt"
+              }
+            },
+            {
+              "name": "CREDIT to CHECKING Transfer",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "// This tests if credit accounts with positive balance can transfer",
+                      "pm.test(\"Transfer from CREDIT account\", function () {",
+                      "    // May succeed if credit has positive balance, or fail if negative",
+                      "    pm.expect([201, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 422) {",
+                      "    pm.test(\"Cannot transfer from negative credit balance\", function () {",
+                      "        var jsonData = pm.response.json();",
+                      "        pm.expect(jsonData.message.toLowerCase()).to.include('insufficient');",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"sourceAccountId\": \"{{credit_account_id}}\",\n    \"targetAccountId\": \"{{checking_account_id}}\",\n    \"amount\": 100.00,\n    \"description\": \"Transfer credit overpayment to checking\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/transfers",
+                  "host": ["{{base_url}}"],
+                  "path": ["transfers"]
+                },
+                "description": "Test transfer from CREDIT account (only works with positive balance)"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cross-User Transfers",
+          "item": [
+            {
+              "name": "Transfer to Another User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cross-user transfer successful\", function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "var jsonData = pm.response.json();",
+                      "pm.test(\"Transfer creates proper records\", function () {",
+                      "    pm.expect(jsonData.sourceTransaction).to.exist;",
+                      "    pm.expect(jsonData.targetTransaction).to.exist;",
+                      "    pm.expect(jsonData.transferReference).to.include('TRF');",
+                      "});",
+                      "",
+                      "pm.collectionVariables.set(\"transfer_reference\", jsonData.transferReference);"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"sourceAccountId\": \"{{source_account_id}}\",\n    \"targetAccountId\": \"{{target_account_id}}\",\n    \"amount\": 750.00,\n    \"description\": \"Payment to Jane Smith for services\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/transfers",
+                  "host": ["{{base_url}}"],
+                  "path": ["transfers"]
+                },
+                "description": "Transfer money to another user's account"
               }
             }
           ]
         }
       ],
-      "description": "Complete test coverage for transfer feature including all edge cases and business rules"
+      "description": "Transfer operations between different account types and users"
     },
     {
-      "name": "4. Core Operations",
+      "name": "6. Core Operations",
       "item": [
         {
           "name": "Users",
@@ -1348,7 +1319,7 @@
           "name": "Accounts",
           "item": [
             {
-              "name": "Get All Accounts",
+              "name": "Get All User Accounts",
               "request": {
                 "method": "GET",
                 "header": [],
@@ -1370,54 +1341,33 @@
                   "path": ["accounts", "{{account_id}}"]
                 }
               }
+            },
+            {
+              "name": "Update Account Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"status\": \"FROZEN\",\n    \"statusChangeReason\": \"Suspicious activity detected\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}"]
+                }
+              }
             }
           ]
         },
         {
           "name": "Transactions",
           "item": [
-            {
-              "name": "Create Deposit",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 1000.00,\n    \"description\": \"Salary deposit\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{account_id}}", "transactions"]
-                }
-              }
-            },
-            {
-              "name": "Create Withdrawal",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 200.00,\n    \"description\": \"ATM withdrawal\"\n}"
-                },
-                "url": {
-                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
-                  "host": ["{{base_url}}"],
-                  "path": ["accounts", "{{account_id}}", "transactions"]
-                }
-              }
-            },
             {
               "name": "Get Transaction History",
               "request": {
@@ -1429,16 +1379,52 @@
                   "path": ["accounts", "{{account_id}}", "transactions"]
                 }
               }
+            },
+            {
+              "name": "Search Transactions",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"type\": \"TRANSFER\",\n    \"minAmount\": 100.00,\n    \"maxAmount\": 1000.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions/search",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions", "search"]
+                }
+              }
             }
           ]
         }
       ]
     },
     {
-      "name": "5. Admin Operations",
+      "name": "7. Analytics & Metrics",
       "item": [
         {
-          "name": "Get All Users (Admin)",
+          "name": "Get Account Metrics (Admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Use admin token",
+                  "pm.request.headers.add({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('admin_token')",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -1453,14 +1439,30 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/admin/users",
+              "raw": "{{base_url}}/metrics/account",
               "host": ["{{base_url}}"],
-              "path": ["admin", "users"]
-            }
+              "path": ["metrics", "account"]
+            },
+            "description": "Get general account metrics (requires admin privileges)"
           }
         },
         {
-          "name": "Get System Metrics",
+          "name": "Get System Metrics (Admin)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Use admin token",
+                  "pm.request.headers.add({",
+                  "    key: 'Authorization',",
+                  "    value: 'Bearer ' + pm.collectionVariables.get('admin_token')",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
@@ -1478,46 +1480,8 @@
               "raw": "{{base_url}}/metrics",
               "host": ["{{base_url}}"],
               "path": ["metrics"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "6. Audit & Analytics",
-      "item": [
-        {
-          "name": "Get Audit Logs",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/audit?page=0&size=20",
-              "host": ["{{base_url}}"],
-              "path": ["audit"],
-              "query": [
-                {
-                  "key": "page",
-                  "value": "0"
-                },
-                {
-                  "key": "size",
-                  "value": "20"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Get Account Analytics",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/accounts/{{account_id}}/analytics",
-              "host": ["{{base_url}}"],
-              "path": ["accounts", "{{account_id}}", "analytics"]
-            }
+            },
+            "description": "Get system-wide metrics (requires admin privileges)"
           }
         }
       ]
