@@ -3,8 +3,10 @@ package com.eaglebank.service;
 import com.eaglebank.audit.Auditable;
 import com.eaglebank.audit.AuditEntry;
 import com.eaglebank.dto.request.CreateTransactionRequest;
+import com.eaglebank.dto.request.CreateTransferRequest;
 import com.eaglebank.dto.request.TransactionSearchRequest;
 import com.eaglebank.dto.response.TransactionResponse;
+import com.eaglebank.dto.response.TransferResponse;
 import com.eaglebank.entity.Account;
 import com.eaglebank.entity.Transaction;
 import com.eaglebank.entity.Transaction.TransactionStatus;
@@ -343,5 +345,141 @@ public class TransactionService {
                 transactions.getTotalElements(), accountId);
         
         return transactions.map(this::mapToResponse);
+    }
+    
+    @Transactional
+    @Auditable(action = AuditEntry.AuditAction.TRANSFER, entityType = "Transfer")
+    @CacheEvict(value = {ACCOUNTS_CACHE, ACCOUNT_TRANSACTIONS_CACHE}, allEntries = true)
+    public TransferResponse createTransfer(UUID userId, CreateTransferRequest request) {
+        // Validate request
+        if (request.getSourceAccountId().equals(request.getTargetAccountId())) {
+            throw new IllegalArgumentException("Source and target accounts must be different");
+        }
+        
+        if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be positive");
+        }
+        
+        // Find source account
+        Account sourceAccount = accountRepository.findById(request.getSourceAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+        
+        // Find target account
+        Account targetAccount = accountRepository.findById(request.getTargetAccountId())
+                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+        
+        // Validate user owns source account
+        if (!sourceAccount.getUser().getId().equals(userId)) {
+            throw new ForbiddenException("User is not authorized to transfer from this account");
+        }
+        
+        // Check account status for source account (can it send money?)
+        AccountStatusStrategy sourceStatusStrategy = statusStrategyFactory.getStrategy(sourceAccount);
+        if (!sourceStatusStrategy.canTransfer(sourceAccount, request.getAmount())) {
+            throw new IllegalStateException("Source account cannot transfer: " + sourceStatusStrategy.getRestrictionReason());
+        }
+        
+        // Check account status for target account (can it receive money?)
+        AccountStatusStrategy targetStatusStrategy = statusStrategyFactory.getStrategy(targetAccount);
+        if (!targetStatusStrategy.canReceiveTransfer(targetAccount, request.getAmount())) {
+            throw new IllegalStateException("Target account cannot receive transfer: " + targetStatusStrategy.getRestrictionReason());
+        }
+        
+        // Validate source has sufficient funds
+        TransactionStrategy transferStrategy = strategyFactory.getStrategy(TransactionType.TRANSFER, sourceAccount);
+        transferStrategy.validateTransaction(sourceAccount, request.getAmount());
+        
+        // Generate shared transfer reference
+        String transferReference = generateTransferReference();
+        LocalDateTime timestamp = LocalDateTime.now();
+        
+        // Create withdrawal transaction from source account
+        Transaction sourceTransaction = Transaction.builder()
+                .id(UuidGenerator.generateUuidV7())
+                .referenceNumber(transferReference + "-OUT")
+                .type(TransactionType.TRANSFER)
+                .amount(request.getAmount())
+                .balanceAfter(sourceAccount.getBalance().subtract(request.getAmount()))
+                .description(request.getDescription() != null ? 
+                    "Transfer to " + targetAccount.getAccountNumber() + ": " + request.getDescription() : 
+                    "Transfer to " + targetAccount.getAccountNumber())
+                .status(TransactionStatus.COMPLETED)
+                .account(sourceAccount)
+                .transactionDate(timestamp)
+                .build();
+        
+        // Create deposit transaction to target account
+        Transaction targetTransaction = Transaction.builder()
+                .id(UuidGenerator.generateUuidV7())
+                .referenceNumber(transferReference + "-IN")
+                .type(TransactionType.TRANSFER)
+                .amount(request.getAmount())
+                .balanceAfter(targetAccount.getBalance().add(request.getAmount()))
+                .description(request.getDescription() != null ? 
+                    "Transfer from " + sourceAccount.getAccountNumber() + ": " + request.getDescription() : 
+                    "Transfer from " + sourceAccount.getAccountNumber())
+                .status(TransactionStatus.COMPLETED)
+                .account(targetAccount)
+                .transactionDate(timestamp)
+                .build();
+        
+        // Update account balances
+        sourceAccount.setBalance(sourceTransaction.getBalanceAfter());
+        targetAccount.setBalance(targetTransaction.getBalanceAfter());
+        
+        // Save everything (atomic transaction)
+        Transaction savedSourceTransaction = transactionRepository.save(sourceTransaction);
+        Transaction savedTargetTransaction = transactionRepository.save(targetTransaction);
+        accountRepository.save(sourceAccount);
+        accountRepository.save(targetAccount);
+        
+        // Publish events
+        eventPublisher.publishEvent(new TransactionCompletedEvent(
+                savedSourceTransaction.getId(),
+                sourceAccount.getId(),
+                sourceAccount.getUser().getId(),
+                savedSourceTransaction.getReferenceNumber(),
+                TransactionType.TRANSFER,
+                savedSourceTransaction.getAmount(),
+                savedSourceTransaction.getBalanceAfter()
+        ));
+        
+        eventPublisher.publishEvent(new TransactionCompletedEvent(
+                savedTargetTransaction.getId(),
+                targetAccount.getId(),
+                targetAccount.getUser().getId(),
+                savedTargetTransaction.getReferenceNumber(),
+                TransactionType.TRANSFER,
+                savedTargetTransaction.getAmount(),
+                savedTargetTransaction.getBalanceAfter()
+        ));
+        
+        // Record metrics
+        metricsCollector.recordTransaction(TransactionType.TRANSFER, request.getAmount(), 0L);
+        
+        log.info("Transfer {} completed from account {} to account {} for amount {}", 
+                transferReference, sourceAccount.getAccountNumber(), 
+                targetAccount.getAccountNumber(), request.getAmount());
+        
+        // Build response
+        return TransferResponse.builder()
+                .transferReference(transferReference)
+                .sourceAccountId(sourceAccount.getId())
+                .targetAccountId(targetAccount.getId())
+                .amount(request.getAmount())
+                .description(request.getDescription())
+                .sourceTransaction(mapToResponse(savedSourceTransaction))
+                .targetTransaction(mapToResponse(savedTargetTransaction))
+                .timestamp(timestamp)
+                .status("COMPLETED")
+                .build();
+    }
+    
+    private String generateTransferReference() {
+        // Generate a unique transfer reference
+        // Format: TRF + timestamp + random 4 digits
+        String timestamp = LocalDateTime.now().format(REFERENCE_FORMATTER);
+        int random = (int) (Math.random() * 10000);
+        return String.format("TRF%s%04d", timestamp, random);
     }
 }

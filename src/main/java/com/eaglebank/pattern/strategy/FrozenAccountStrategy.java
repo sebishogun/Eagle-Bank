@@ -62,4 +62,17 @@ public class FrozenAccountStrategy implements AccountStatusStrategy {
     public Account.AccountStatus getHandledStatus() {
         return Account.AccountStatus.FROZEN;
     }
+    
+    @Override
+    public boolean canTransfer(Account account, BigDecimal amount) {
+        log.warn("Transfer attempt blocked for frozen account {}", account.getAccountNumber());
+        return false;
+    }
+    
+    @Override
+    public boolean canReceiveTransfer(Account account, BigDecimal amount) {
+        // Allow receiving transfers to frozen accounts (e.g., for debt recovery)
+        log.info("Transfer receipt allowed for frozen account {}", account.getAccountNumber());
+        return true;
+    }
 }

@@ -67,7 +67,8 @@ public class Transaction extends BaseEntity {
     
     public enum TransactionType {
         DEPOSIT,
-        WITHDRAWAL
+        WITHDRAWAL,
+        TRANSFER
     }
     
     public enum TransactionStatus {

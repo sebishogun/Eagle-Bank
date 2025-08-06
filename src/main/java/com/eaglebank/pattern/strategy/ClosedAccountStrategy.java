@@ -60,4 +60,16 @@ public class ClosedAccountStrategy implements AccountStatusStrategy {
     public Account.AccountStatus getHandledStatus() {
         return Account.AccountStatus.CLOSED;
     }
+    
+    @Override
+    public boolean canTransfer(Account account, BigDecimal amount) {
+        log.error("Transfer attempt on closed account {}", account.getAccountNumber());
+        return false;
+    }
+    
+    @Override
+    public boolean canReceiveTransfer(Account account, BigDecimal amount) {
+        log.error("Transfer receipt attempt on closed account {}", account.getAccountNumber());
+        return false;
+    }
 }

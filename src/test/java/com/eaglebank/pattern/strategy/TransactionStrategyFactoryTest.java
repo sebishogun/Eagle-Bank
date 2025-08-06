@@ -18,12 +18,14 @@ class TransactionStrategyFactoryTest {
         DepositStrategy depositStrategy = new DepositStrategy();
         WithdrawalStrategy withdrawalStrategy = new WithdrawalStrategy();
         CreditWithdrawalStrategy creditWithdrawalStrategy = new CreditWithdrawalStrategy();
+        TransferStrategy transferStrategy = new TransferStrategy();
         
         factory = new TransactionStrategyFactory(
-            List.of(depositStrategy, withdrawalStrategy, creditWithdrawalStrategy),
+            List.of(depositStrategy, withdrawalStrategy, creditWithdrawalStrategy, transferStrategy),
             withdrawalStrategy,
             creditWithdrawalStrategy,
-            depositStrategy
+            depositStrategy,
+            transferStrategy
         );
     }
     
@@ -55,7 +57,8 @@ class TransactionStrategyFactoryTest {
             List.of(),
             new WithdrawalStrategy(),
             new CreditWithdrawalStrategy(),
-            new DepositStrategy()
+            new DepositStrategy(),
+            new TransferStrategy()
         );
         
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> 

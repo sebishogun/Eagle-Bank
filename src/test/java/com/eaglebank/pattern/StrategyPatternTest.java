@@ -8,6 +8,7 @@ import com.eaglebank.pattern.strategy.TransactionStrategy;
 import com.eaglebank.pattern.strategy.TransactionStrategyFactory;
 import com.eaglebank.pattern.strategy.WithdrawalStrategy;
 import com.eaglebank.pattern.strategy.CreditWithdrawalStrategy;
+import com.eaglebank.pattern.strategy.TransferStrategy;
 import com.eaglebank.util.UuidGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,12 +28,14 @@ class StrategyPatternTest {
         DepositStrategy depositStrategy = new DepositStrategy();
         WithdrawalStrategy withdrawalStrategy = new WithdrawalStrategy();
         CreditWithdrawalStrategy creditWithdrawalStrategy = new CreditWithdrawalStrategy();
+        TransferStrategy transferStrategy = new TransferStrategy();
         
         strategyFactory = new TransactionStrategyFactory(
-            List.of(depositStrategy, withdrawalStrategy, creditWithdrawalStrategy),
+            List.of(depositStrategy, withdrawalStrategy, creditWithdrawalStrategy, transferStrategy),
             withdrawalStrategy,
             creditWithdrawalStrategy,
-            depositStrategy
+            depositStrategy,
+            transferStrategy
         );
         
         User user = User.builder()

@@ -32,8 +32,9 @@ public class TestPatternConfig {
             List<TransactionStrategy> strategies,
             WithdrawalStrategy withdrawalStrategy,
             CreditWithdrawalStrategy creditWithdrawalStrategy,
-            DepositStrategy depositStrategy) {
-        return new TransactionStrategyFactory(strategies, withdrawalStrategy, creditWithdrawalStrategy, depositStrategy);
+            DepositStrategy depositStrategy,
+            TransferStrategy transferStrategy) {
+        return new TransactionStrategyFactory(strategies, withdrawalStrategy, creditWithdrawalStrategy, depositStrategy, transferStrategy);
     }
     
     @Bean
@@ -49,6 +50,11 @@ public class TestPatternConfig {
     @Bean
     public CreditWithdrawalStrategy creditWithdrawalStrategy() {
         return new CreditWithdrawalStrategy();
+    }
+    
+    @Bean
+    public TransferStrategy transferStrategy() {
+        return new TransferStrategy();
     }
     
     @Bean

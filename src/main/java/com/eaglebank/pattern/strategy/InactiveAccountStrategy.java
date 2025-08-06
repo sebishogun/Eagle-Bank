@@ -61,4 +61,16 @@ public class InactiveAccountStrategy implements AccountStatusStrategy {
     public Account.AccountStatus getHandledStatus() {
         return Account.AccountStatus.INACTIVE;
     }
+    
+    @Override
+    public boolean canTransfer(Account account, BigDecimal amount) {
+        log.warn("Transfer attempt blocked for inactive account {}", account.getAccountNumber());
+        return false;
+    }
+    
+    @Override
+    public boolean canReceiveTransfer(Account account, BigDecimal amount) {
+        log.warn("Transfer receipt blocked for inactive account {}", account.getAccountNumber());
+        return false;
+    }
 }

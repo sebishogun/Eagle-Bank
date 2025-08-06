@@ -59,4 +59,16 @@ public class ActiveAccountStrategy implements AccountStatusStrategy {
     public Account.AccountStatus getHandledStatus() {
         return Account.AccountStatus.ACTIVE;
     }
+    
+    @Override
+    public boolean canTransfer(Account account, BigDecimal amount) {
+        log.debug("Active account {} allows transfers", account.getAccountNumber());
+        return true;
+    }
+    
+    @Override
+    public boolean canReceiveTransfer(Account account, BigDecimal amount) {
+        log.debug("Active account {} allows receiving transfers", account.getAccountNumber());
+        return true;
+    }
 }

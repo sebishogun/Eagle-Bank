@@ -1,6 +1,7 @@
 package com.eaglebank.pattern.strategy;
 
 import com.eaglebank.entity.Account;
+import java.math.BigDecimal;
 
 /**
  * Strategy interface for account status-specific business rules and validations.
@@ -57,4 +58,20 @@ public interface AccountStatusStrategy {
      * @return The account status
      */
     Account.AccountStatus getHandledStatus();
+    
+    /**
+     * Validates if a transfer can be sent from this account
+     * @param account The account to validate
+     * @param amount The transfer amount
+     * @return true if transfer is allowed, false otherwise
+     */
+    boolean canTransfer(Account account, BigDecimal amount);
+    
+    /**
+     * Validates if a transfer can be received by this account
+     * @param account The account to validate
+     * @param amount The transfer amount
+     * @return true if receiving transfer is allowed, false otherwise
+     */
+    boolean canReceiveTransfer(Account account, BigDecimal amount);
 }

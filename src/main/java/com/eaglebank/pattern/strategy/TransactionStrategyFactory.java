@@ -15,6 +15,7 @@ public class TransactionStrategyFactory {
     private final WithdrawalStrategy withdrawalStrategy;
     private final CreditWithdrawalStrategy creditWithdrawalStrategy;
     private final DepositStrategy depositStrategy;
+    private final TransferStrategy transferStrategy;
     
     public TransactionStrategy getStrategy(Transaction.TransactionType type) {
         return strategies.stream()
@@ -31,6 +32,11 @@ public class TransactionStrategyFactory {
             } else {
                 return withdrawalStrategy;
             }
+        }
+        
+        // Handle transfer type
+        if (type == Transaction.TransactionType.TRANSFER) {
+            return transferStrategy;
         }
         
         // For other transaction types, use the default strategy

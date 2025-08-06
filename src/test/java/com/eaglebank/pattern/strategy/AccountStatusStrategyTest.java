@@ -129,4 +129,41 @@ class AccountStatusStrategyTest {
         assertEquals(Account.AccountStatus.FROZEN, frozenStrategy.getHandledStatus());
         assertEquals(Account.AccountStatus.CLOSED, closedStrategy.getHandledStatus());
     }
+    
+    @Test
+    @DisplayName("Active account should allow both sending and receiving transfers")
+    void testActiveAccountTransfers() {
+        testAccount.setStatus(Account.AccountStatus.ACTIVE);
+        
+        assertTrue(activeStrategy.canTransfer(testAccount, new BigDecimal("100")));
+        assertTrue(activeStrategy.canReceiveTransfer(testAccount, new BigDecimal("100")));
+    }
+    
+    @Test
+    @DisplayName("Frozen account should block outgoing transfers but allow incoming")
+    void testFrozenAccountTransfers() {
+        testAccount.setStatus(Account.AccountStatus.FROZEN);
+        
+        assertFalse(frozenStrategy.canTransfer(testAccount, new BigDecimal("100")));
+        assertTrue(frozenStrategy.canReceiveTransfer(testAccount, new BigDecimal("100")));
+    }
+    
+    @Test
+    @DisplayName("Closed account should block all transfers")
+    void testClosedAccountTransfers() {
+        testAccount.setStatus(Account.AccountStatus.CLOSED);
+        
+        assertFalse(closedStrategy.canTransfer(testAccount, new BigDecimal("100")));
+        assertFalse(closedStrategy.canReceiveTransfer(testAccount, new BigDecimal("100")));
+    }
+    
+    @Test
+    @DisplayName("Inactive account should block all transfers")
+    void testInactiveAccountTransfers() {
+        InactiveAccountStrategy inactiveStrategy = new InactiveAccountStrategy();
+        testAccount.setStatus(Account.AccountStatus.INACTIVE);
+        
+        assertFalse(inactiveStrategy.canTransfer(testAccount, new BigDecimal("100")));
+        assertFalse(inactiveStrategy.canReceiveTransfer(testAccount, new BigDecimal("100")));
+    }
 }
