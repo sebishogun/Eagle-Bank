@@ -1485,6 +1485,873 @@
           }
         }
       ]
+    },
+    {
+      "name": "8. Complete Requirements Coverage",
+      "item": [
+        {
+          "name": "User Deletion Tests",
+          "item": [
+            {
+              "name": "Create User for Deletion",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set(\"delete_user_id\", jsonData.id);",
+                      "    ",
+                      "    pm.test(\"User created for deletion test\", function () {",
+                      "        pm.response.to.have.status(201);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"delete.test@example.com\",\n    \"password\": \"SecurePass123!\",\n    \"firstName\": \"Delete\",\n    \"lastName\": \"Test\",\n    \"phoneNumber\": \"+1234567890\",\n    \"address\": \"123 Delete Street\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["users"]
+                },
+                "description": "Create a user specifically for deletion testing"
+              }
+            },
+            {
+              "name": "Login as Delete User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set(\"delete_user_token\", jsonData.token);",
+                      "    ",
+                      "    pm.test(\"Login successful for delete user\", function () {",
+                      "        pm.response.to.have.status(200);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"email\": \"delete.test@example.com\",\n    \"password\": \"SecurePass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "Delete User Without Accounts (Success)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"User deleted successfully\", function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "exec": [
+                      "pm.request.headers.add({",
+                      "    key: 'Authorization',",
+                      "    value: 'Bearer ' + pm.collectionVariables.get('delete_user_token')",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{delete_user_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/users/{{delete_user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "{{delete_user_id}}"]
+                },
+                "description": "Delete user without any bank accounts - should succeed"
+              }
+            },
+            {
+              "name": "Delete User With Accounts (Conflict)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot delete user with accounts\", function () {",
+                      "    pm.response.to.have.status(409);",
+                      "});",
+                      "",
+                      "pm.test(\"Error message about accounts\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('account');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/users/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "{{user_id}}"]
+                },
+                "description": "Try to delete user who has bank accounts - should fail with 409"
+              }
+            },
+            {
+              "name": "Delete Another User (Forbidden)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot delete another user\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Forbidden error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.eql('Forbidden');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/users/{{user_id_2}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "{{user_id_2}}"]
+                },
+                "description": "Try to delete another user's account - should fail with 403"
+              }
+            },
+            {
+              "name": "Delete Non-Existent User (Not Found)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"User not found\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Not found error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/users/01234567-89ab-cdef-0123-456789abcdef",
+                  "host": ["{{base_url}}"],
+                  "path": ["users", "01234567-89ab-cdef-0123-456789abcdef"]
+                },
+                "description": "Try to delete non-existent user - should fail with 404"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Account Deletion Tests",
+          "item": [
+            {
+              "name": "Create Account for Deletion",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set(\"delete_account_id\", jsonData.id);",
+                      "    ",
+                      "    pm.test(\"Account created for deletion\", function () {",
+                      "        pm.response.to.have.status(201);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"accountType\": \"CHECKING\",\n    \"accountName\": \"Account to Delete\",\n    \"initialBalance\": 100.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts"]
+                }
+              }
+            },
+            {
+              "name": "Delete Own Account (Success)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Account deleted successfully\", function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{delete_account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{delete_account_id}}"]
+                },
+                "description": "Delete own account - should succeed"
+              }
+            },
+            {
+              "name": "Delete Another User's Account (Forbidden)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot delete another user's account\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Forbidden error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.eql('Forbidden');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{target_account_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{target_account_id}}"]
+                },
+                "description": "Try to delete another user's account - should fail with 403"
+              }
+            },
+            {
+              "name": "Delete Non-Existent Account (Not Found)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Account not found\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Not found error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/01234567-89ab-cdef-0123-456789abcdef",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "01234567-89ab-cdef-0123-456789abcdef"]
+                },
+                "description": "Try to delete non-existent account - should fail with 404"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transaction Error Scenarios",
+          "item": [
+            {
+              "name": "Create Small Balance Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set(\"small_balance_account_id\", jsonData.id);",
+                      "    ",
+                      "    pm.test(\"Small balance account created\", function () {",
+                      "        pm.response.to.have.status(201);",
+                      "        pm.expect(jsonData.balance).to.eql(50);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"accountType\": \"CHECKING\",\n    \"accountName\": \"Low Balance Test Account\",\n    \"initialBalance\": 50.00\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts"]
+                }
+              }
+            },
+            {
+              "name": "Withdrawal With Insufficient Funds",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Insufficient funds error\", function () {",
+                      "    pm.response.to.have.status(422);",
+                      "});",
+                      "",
+                      "pm.test(\"Error message about insufficient funds\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('insufficient');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"WITHDRAWAL\",\n    \"amount\": 100.00,\n    \"description\": \"Withdrawal exceeding balance\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{small_balance_account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{small_balance_account_id}}", "transactions"]
+                },
+                "description": "Attempt withdrawal with insufficient funds - should fail with 422"
+              }
+            },
+            {
+              "name": "Create Transaction Missing Fields",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Bad request for missing fields\", function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test(\"Validation error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('validationErrors');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                },
+                "description": "Create transaction with missing required fields - should fail with 400"
+              }
+            },
+            {
+              "name": "Transaction on Another User's Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot create transaction on another user's account\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Forbidden error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.eql('Forbidden');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 100.00,\n    \"description\": \"Unauthorized deposit attempt\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{target_account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{target_account_id}}", "transactions"]
+                },
+                "description": "Try to create transaction on another user's account - should fail with 403"
+              }
+            },
+            {
+              "name": "Transaction on Non-Existent Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Account not found\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Not found error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 100.00,\n    \"description\": \"Deposit to non-existent account\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/01234567-89ab-cdef-0123-456789abcdef/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "01234567-89ab-cdef-0123-456789abcdef", "transactions"]
+                },
+                "description": "Try to create transaction on non-existent account - should fail with 404"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Single Transaction Tests",
+          "item": [
+            {
+              "name": "Create Transaction for Testing",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.collectionVariables.set(\"test_transaction_id\", jsonData.id);",
+                      "    ",
+                      "    pm.test(\"Transaction created for testing\", function () {",
+                      "        pm.response.to.have.status(201);",
+                      "    });",
+                      "}"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"transactionType\": \"DEPOSIT\",\n    \"amount\": 250.00,\n    \"description\": \"Test transaction for single fetch\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions"]
+                }
+              }
+            },
+            {
+              "name": "Get Transaction on Own Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Can retrieve own transaction\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Transaction details correct\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('id');",
+                      "    pm.expect(jsonData.amount).to.eql(250);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions/{{test_transaction_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions", "{{test_transaction_id}}"]
+                },
+                "description": "Get single transaction on own account - should succeed"
+              }
+            },
+            {
+              "name": "Get Transaction on Another User's Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Cannot get transaction on another user's account\", function () {",
+                      "    pm.response.to.have.status(403);",
+                      "});",
+                      "",
+                      "pm.test(\"Forbidden error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.error).to.eql('Forbidden');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{target_account_id}}/transactions/{{test_transaction_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{target_account_id}}", "transactions", "{{test_transaction_id}}"]
+                },
+                "description": "Try to get transaction on another user's account - should fail with 403"
+              }
+            },
+            {
+              "name": "Get Non-Existent Transaction",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Transaction not found\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Not found error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{account_id}}/transactions/01234567-89ab-cdef-0123-456789abcdef",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{account_id}}", "transactions", "01234567-89ab-cdef-0123-456789abcdef"]
+                },
+                "description": "Try to get non-existent transaction - should fail with 404"
+              }
+            },
+            {
+              "name": "Get Transaction Against Wrong Account",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Transaction not found on wrong account\", function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});",
+                      "",
+                      "pm.test(\"Not found error message\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('not found');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/accounts/{{checking_account_id}}/transactions/{{test_transaction_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["accounts", "{{checking_account_id}}", "transactions", "{{test_transaction_id}}"]
+                },
+                "description": "Try to get transaction against wrong account - should fail with 404"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Authentication Tests",
+          "item": [
+            {
+              "name": "Refresh Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Token refreshed successfully\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"New tokens received\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData).to.have.property('token');",
+                      "    pm.expect(jsonData).to.have.property('refreshToken');",
+                      "    ",
+                      "    // Update tokens",
+                      "    pm.collectionVariables.set(\"auth_token\", jsonData.token);",
+                      "    pm.collectionVariables.set(\"refresh_token\", jsonData.refreshToken);",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"refreshToken\": \"{{refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/refresh",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "refresh"]
+                },
+                "description": "Refresh authentication token using refresh token"
+              }
+            },
+            {
+              "name": "Logout",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Logout successful\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Logout message received\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('logout');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "logout"]
+                },
+                "description": "Logout and invalidate token"
+              }
+            },
+            {
+              "name": "Change Password",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test(\"Password changed successfully\", function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test(\"Success message received\", function () {",
+                      "    var jsonData = pm.response.json();",
+                      "    pm.expect(jsonData.message.toLowerCase()).to.include('password');",
+                      "});"
+                    ],
+                    "type": "text/javascript"
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"currentPassword\": \"SecurePass123!\",\n    \"newPassword\": \"NewSecurePass456!\",\n    \"confirmPassword\": \"NewSecurePass456!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/auth/change-password",
+                  "host": ["{{base_url}}"],
+                  "path": ["auth", "change-password"]
+                },
+                "description": "Change user password"
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Complete test coverage for all requirements from the Take Home test document"
     }
   ]
 }

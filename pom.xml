@@ -116,7 +116,6 @@
             <version>${springdoc.version}</version>
         </dependency>
         
-        <!-- Security vulnerability overrides -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
