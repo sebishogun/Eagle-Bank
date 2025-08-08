@@ -129,4 +129,14 @@ public class KeyManagementService {
     public boolean isRsaEnabled() {
         return privateKey != null && publicKey != null;
     }
+    
+    /**
+     * Get the key pair for encryption/decryption
+     */
+    public KeyPair getKeyPair() {
+        if (keyPair != null) {
+            return keyPair;
+        }
+        return new KeyPair(publicKey, privateKey);
+    }
 }

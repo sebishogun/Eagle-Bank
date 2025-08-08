@@ -1,11 +1,13 @@
 package com.eaglebank.security;
 
+import com.eaglebank.service.JweTokenService;
 import com.eaglebank.service.KeyManagementService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.jose4j.lang.JoseException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -28,6 +30,9 @@ public class JwtTokenProvider {
     
     @Autowired(required = false)
     private KeyManagementService keyManagementService;
+    
+    @Autowired(required = false)
+    private JweTokenService jweTokenService;
     
     private SecretKey hmacKey;
     private Key signingKey;
@@ -73,27 +78,43 @@ public class JwtTokenProvider {
             builder.signWith(signingKey);
         }
         
-        return builder.compact();
+        String jwt = builder.compact();
+        
+        // Encrypt the JWT if JWE is enabled
+        if (jweTokenService != null && jweTokenService.isEncryptionEnabled()) {
+            try {
+                return jweTokenService.encryptToken(jwt);
+            } catch (JoseException e) {
+                log.error("Failed to encrypt JWT to JWE, returning unencrypted JWT", e);
+                return jwt;
+            }
+        }
+        
+        return jwt;
     }
     
     public UUID getUserIdFromToken(String token) {
-        Claims claims = getClaimsFromToken(token);
+        String jwt = decryptIfNeeded(token);
+        Claims claims = getClaimsFromToken(jwt);
         return UUID.fromString(claims.getSubject());
     }
     
     public String getEmailFromToken(String token) {
-        Claims claims = getClaimsFromToken(token);
+        String jwt = decryptIfNeeded(token);
+        Claims claims = getClaimsFromToken(jwt);
         return claims.get("email", String.class);
     }
     
     public Integer getSecurityVersionFromToken(String token) {
-        Claims claims = getClaimsFromToken(token);
+        String jwt = decryptIfNeeded(token);
+        Claims claims = getClaimsFromToken(jwt);
         return claims.get("secVer", Integer.class);
     }
     
     public boolean validateToken(String token) {
         try {
-            jwtParser.parseSignedClaims(token);
+            String jwt = decryptIfNeeded(token);
+            jwtParser.parseSignedClaims(jwt);
             return true;
         } catch (MalformedJwtException ex) {
             log.error("Invalid JWT token");
@@ -110,13 +131,32 @@ public class JwtTokenProvider {
     }
     
     public Claims getClaimsFromToken(String token) {
+        // Note: token should already be decrypted before calling this
+        // This is to avoid double decryption
         return jwtParser
                 .parseSignedClaims(token)
                 .getPayload();
     }
     
     public Date getExpirationDateFromToken(String token) {
-        Claims claims = getClaimsFromToken(token);
+        String jwt = decryptIfNeeded(token);
+        Claims claims = getClaimsFromToken(jwt);
         return claims.getExpiration();
+    }
+    
+    /**
+     * Decrypt the token if it's JWE format, otherwise return as-is.
+     */
+    private String decryptIfNeeded(String token) {
+        if (jweTokenService == null || !jweTokenService.isEncryptionEnabled()) {
+            return token;
+        }
+        
+        try {
+            return jweTokenService.decryptToken(token);
+        } catch (JoseException e) {
+            log.error("Failed to decrypt JWE token, treating as regular JWT", e);
+            return token;
+        }
     }
 }

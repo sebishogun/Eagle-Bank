@@ -36,6 +36,18 @@ jwt:
   rsa:
     private-key: ${JWT_RSA_PRIVATE_KEY:}
     public-key: ${JWT_RSA_PUBLIC_KEY:}
+  encryption:
+    # JWE (JSON Web Encryption) adds encryption on top of signed JWTs
+    # When enabled, tokens become 5-part JWE format instead of 3-part JWT
+    # This hides token contents from clients (user ID, email, roles not visible)
+    # To enable JWE encryption, set to true (or set JWT_ENCRYPTION_ENABLED=true)
+    enabled: ${JWT_ENCRYPTION_ENABLED:false} # Set to true to enable JWE encryption
+    # Key encryption algorithm (how the AES key is encrypted)
+    # Options: RSA-OAEP, RSA-OAEP-256, RSA1_5
+    algorithm: ${JWT_ENCRYPTION_ALGORITHM:RSA-OAEP-256}
+    # Content encryption algorithm (how the JWT payload is encrypted)  
+    # Options: A128GCM, A192GCM, A256GCM, A128CBC-HS256, A256CBC-HS512
+    content-algorithm: ${JWT_ENCRYPTION_CONTENT_ALGORITHM:A256GCM}
 
 logging:
   level:
