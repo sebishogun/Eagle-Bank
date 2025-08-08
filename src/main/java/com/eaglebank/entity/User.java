@@ -44,6 +44,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private Role role = Role.USER;
     
+    @Column(name = "security_version", nullable = false, columnDefinition = "INTEGER DEFAULT 0")
+    @Builder.Default
+    private Integer securityVersion = 0;
+    
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Account> accounts = new ArrayList<>();

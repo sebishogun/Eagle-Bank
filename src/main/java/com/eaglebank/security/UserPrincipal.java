@@ -20,6 +20,7 @@ public class UserPrincipal implements UserDetails {
     private UUID id;
     private String email;
     private String password;
+    private Integer securityVersion;
     private Collection<? extends GrantedAuthority> authorities;
     
     public static UserPrincipal create(User user) {
@@ -28,6 +29,7 @@ public class UserPrincipal implements UserDetails {
                 .id(user.getId())
                 .email(user.getEmail())
                 .password(user.getPassword())
+                .securityVersion(user.getSecurityVersion())
                 .authorities(Collections.singletonList(new SimpleGrantedAuthority(roleName)))
                 .build();
     }

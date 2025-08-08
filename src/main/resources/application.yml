@@ -12,6 +12,16 @@ spring:
             non_contextual_creation: true
     show-sql: false
     open-in-view: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
 
 server:
   port: 8080
@@ -20,9 +30,12 @@ server:
 
 jwt:
   secret: ${JWT_SECRET:your-secret-key-change-in-production}
-  expiration: 86400000 # 24 hours in milliseconds
+  expiration: 900000 # 15 minutes in milliseconds (reduced from 24 hours)
   refresh:
     expiration: 604800000 # 7 days in milliseconds
+  rsa:
+    private-key: ${JWT_RSA_PRIVATE_KEY:}
+    public-key: ${JWT_RSA_PUBLIC_KEY:}
 
 logging:
   level:
@@ -76,9 +89,10 @@ management:
     health:
       show-details: when-authorized
   metrics:
-    export:
-      prometheus:
-        enabled: true
     distribution:
       percentiles-histogram:
         http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true

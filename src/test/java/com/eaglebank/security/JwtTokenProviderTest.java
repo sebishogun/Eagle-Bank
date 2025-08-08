@@ -31,7 +31,7 @@ class JwtTokenProviderTest {
         String email = "test@example.com";
         
         // When
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // Then
         assertThat(token).isNotNull();
@@ -44,7 +44,7 @@ class JwtTokenProviderTest {
         // Given
         UUID userId = UUID.randomUUID();
         String email = "test@example.com";
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // When
         UUID extractedUserId = jwtTokenProvider.getUserIdFromToken(token);
@@ -58,7 +58,7 @@ class JwtTokenProviderTest {
         // Given
         UUID userId = UUID.randomUUID();
         String email = "test@example.com";
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // When
         String extractedEmail = jwtTokenProvider.getEmailFromToken(token);
@@ -72,7 +72,7 @@ class JwtTokenProviderTest {
         // Given
         UUID userId = UUID.randomUUID();
         String email = "test@example.com";
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // When
         boolean isValid = jwtTokenProvider.validateToken(token);
@@ -103,7 +103,7 @@ class JwtTokenProviderTest {
         
         UUID userId = UUID.randomUUID();
         String email = "test@example.com";
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // When
         boolean isValid = jwtTokenProvider.validateToken(token);
@@ -117,7 +117,7 @@ class JwtTokenProviderTest {
         // Given
         UUID userId = UUID.randomUUID();
         String email = "test@example.com";
-        String token = jwtTokenProvider.generateToken(userId, email);
+        String token = jwtTokenProvider.generateToken(userId, email, 0);
         
         // When
         Claims claims = jwtTokenProvider.getClaimsFromToken(token);

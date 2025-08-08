@@ -7,13 +7,16 @@ import com.eaglebank.dto.response.AuthResponse;
 import com.eaglebank.dto.response.MessageResponse;
 import com.eaglebank.service.AuthService;
 import com.eaglebank.service.RefreshTokenService;
+import com.eaglebank.service.TokenBlacklistService;
 import com.eaglebank.service.UserService;
+import com.eaglebank.security.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +24,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/v1/auth")
@@ -33,6 +39,8 @@ public class AuthController {
     private final AuthService authService;
     private final RefreshTokenService refreshTokenService;
     private final UserService userService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final JwtTokenProvider tokenProvider;
     
     @PostMapping("/login")
     @Operation(summary = "User login", description = "Authenticates a user and returns a JWT token")
@@ -62,7 +70,7 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    @Operation(summary = "User logout", description = "Invalidates the user's refresh token")
+    @Operation(summary = "User logout", description = "Invalidates the user's JWT and refresh token")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Logout successful"),
@@ -71,9 +79,24 @@ public class AuthController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MessageResponse> logout(
             @Parameter(hidden = true) @AuthenticationPrincipal UserDetails userDetails,
-            @RequestBody(required = false) RefreshTokenRequest request) {
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
         log.info("Logout request for user: {}", userDetails.getUsername());
         
+        // Blacklist the current JWT token
+        String bearerToken = httpRequest.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            String jwt = bearerToken.substring(7);
+            try {
+                UUID userId = tokenProvider.getUserIdFromToken(jwt);
+                tokenBlacklistService.blacklistToken(jwt, 
+                    tokenProvider.getExpirationDateFromToken(jwt), userId);
+            } catch (Exception e) {
+                log.error("Error blacklisting token on logout", e);
+            }
+        }
+        
+        // Revoke refresh token if provided
         if (request != null && request.getRefreshToken() != null) {
             refreshTokenService.revokeRefreshToken(request.getRefreshToken());
         }

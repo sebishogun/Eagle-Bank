@@ -30,6 +30,8 @@ public class UserService {
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordStrengthService passwordStrengthService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final RefreshTokenService refreshTokenService;
     
     public UserResponse createUser(CreateUserRequest request) {
         log.debug("Creating new user with email: {}", request.getEmail());
@@ -177,10 +179,15 @@ public class UserService {
                     "Please use a stronger password with more entropy.");
         }
         
-        // Update password
+        // Update password and increment security version
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setSecurityVersion(user.getSecurityVersion() + 1);
         userRepository.save(user);
         
-        log.info("Password changed successfully for user: {}", email);
+        // Revoke all existing tokens for this user
+        tokenBlacklistService.revokeAllUserTokens(user.getId());
+        refreshTokenService.revokeAllUserTokens(user.getId());
+        
+        log.info("Password changed successfully for user: {} - all tokens revoked", email);
     }
 }

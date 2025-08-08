@@ -1,5 +1,8 @@
 package com.eaglebank.security;
 
+import com.eaglebank.entity.User;
+import com.eaglebank.repository.UserRepository;
+import com.eaglebank.service.TokenBlacklistService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +19,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -24,6 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final JwtTokenProvider tokenProvider;
     private final UserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
+    private final UserRepository userRepository;
     
     @Override
     protected void doFilterInternal(HttpServletRequest request, 
@@ -32,15 +38,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String jwt = getJwtFromRequest(request);
             
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                String email = tokenProvider.getEmailFromToken(jwt);
-                
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                UsernamePasswordAuthenticationToken authentication = 
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+            if (StringUtils.hasText(jwt)) {
+                // Check if token is blacklisted
+                if (tokenBlacklistService.isBlacklisted(jwt)) {
+                    log.debug("Token is blacklisted, rejecting authentication");
+                } else if (tokenProvider.validateToken(jwt)) {
+                    // Check security version
+                    UUID userId = tokenProvider.getUserIdFromToken(jwt);
+                    Integer tokenSecurityVersion = tokenProvider.getSecurityVersionFromToken(jwt);
+                    
+                    // Get current user security version from database
+                    User user = userRepository.findById(userId).orElse(null);
+                    if (user != null && tokenSecurityVersion != null 
+                            && tokenSecurityVersion.equals(user.getSecurityVersion())) {
+                        // Security version matches, proceed with authentication
+                        String email = tokenProvider.getEmailFromToken(jwt);
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                        UsernamePasswordAuthenticationToken authentication = 
+                                new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    } else {
+                        log.debug("Token security version mismatch or user not found, rejecting authentication");
+                    }
+                }
             }
         } catch (Exception ex) {
             log.error("Could not set user authentication in security context", ex);

@@ -37,6 +37,7 @@ public class TestSecurityConfig {
                 UUID.fromString(annotation.userId()),
                 annotation.email(),
                 "password",
+                0,
                 Collections.emptyList()
             );
             

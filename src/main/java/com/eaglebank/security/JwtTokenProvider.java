@@ -1,15 +1,18 @@
 package com.eaglebank.security;
 
+import com.eaglebank.service.KeyManagementService;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.Date;
 import java.util.UUID;
 
@@ -23,28 +26,54 @@ public class JwtTokenProvider {
     @Value("${jwt.expiration}")
     private long expiration;
     
-    private SecretKey key;
+    @Autowired(required = false)
+    private KeyManagementService keyManagementService;
+    
+    private SecretKey hmacKey;
+    private Key signingKey;
     private JwtParser jwtParser;
+    private boolean useRsa = false;
     
     @PostConstruct
     public void init() {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.jwtParser = Jwts.parser()
-                .verifyWith(key)
-                .build();
+        // Check if RSA keys are available
+        if (keyManagementService != null && keyManagementService.isRsaEnabled()) {
+            log.info("Using RSA (RS256) for JWT signing");
+            this.signingKey = keyManagementService.getPrivateKey();
+            this.jwtParser = Jwts.parser()
+                    .verifyWith(keyManagementService.getPublicKey())
+                    .build();
+            this.useRsa = true;
+        } else {
+            log.info("Using HMAC (HS256) for JWT signing");
+            this.hmacKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+            this.signingKey = this.hmacKey;
+            this.jwtParser = Jwts.parser()
+                    .verifyWith(hmacKey)
+                    .build();
+            this.useRsa = false;
+        }
     }
     
-    public String generateToken(UUID userId, String email) {
+    public String generateToken(UUID userId, String email, Integer securityVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
         
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(userId.toString())
                 .claim("email", email)
+                .claim("secVer", securityVersion != null ? securityVersion : 0)
                 .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
-                .compact();
+                .expiration(expiryDate);
+        
+        // Sign with appropriate key (RSA or HMAC)
+        if (useRsa) {
+            builder.signWith(signingKey, SignatureAlgorithm.RS256);
+        } else {
+            builder.signWith(signingKey);
+        }
+        
+        return builder.compact();
     }
     
     public UUID getUserIdFromToken(String token) {
@@ -55,6 +84,11 @@ public class JwtTokenProvider {
     public String getEmailFromToken(String token) {
         Claims claims = getClaimsFromToken(token);
         return claims.get("email", String.class);
+    }
+    
+    public Integer getSecurityVersionFromToken(String token) {
+        Claims claims = getClaimsFromToken(token);
+        return claims.get("secVer", Integer.class);
     }
     
     public boolean validateToken(String token) {

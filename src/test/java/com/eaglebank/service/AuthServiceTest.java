@@ -79,6 +79,7 @@ class AuthServiceTest {
                 .password("encodedPassword")
                 .firstName("John")
                 .lastName("Doe")
+                .securityVersion(0)
                 .build();
         
         userPrincipal = UserPrincipal.create(user);
@@ -93,7 +94,7 @@ class AuthServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(authentication.getPrincipal()).thenReturn(userPrincipal);
-        when(tokenProvider.generateToken(userId, "john.doe@example.com")).thenReturn(token);
+        when(tokenProvider.generateToken(userId, "john.doe@example.com", 0)).thenReturn(token);
         when(tokenProvider.getExpirationDateFromToken(anyString())).thenReturn(expirationDate);
         
         // When
@@ -107,7 +108,7 @@ class AuthServiceTest {
         assertThat(response.getEmail()).isEqualTo("john.doe@example.com");
         
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(tokenProvider).generateToken(userId, "john.doe@example.com");
+        verify(tokenProvider).generateToken(userId, "john.doe@example.com", 0);
     }
     
     @Test
@@ -122,6 +123,6 @@ class AuthServiceTest {
                 .hasMessageContaining("Invalid email or password");
         
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(tokenProvider, never()).generateToken(any(), any());
+        verify(tokenProvider, never()).generateToken(any(), any(), any());
     }
 }

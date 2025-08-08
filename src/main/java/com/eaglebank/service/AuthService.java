@@ -5,10 +5,12 @@ import com.eaglebank.audit.AuditEntry;
 import com.eaglebank.audit.AuditService;
 import com.eaglebank.dto.request.LoginRequest;
 import com.eaglebank.dto.response.AuthResponse;
+import com.eaglebank.entity.User;
 import com.eaglebank.pattern.observer.EventPublisher;
 import com.eaglebank.event.UserLoggedInEvent;
 import com.eaglebank.exception.UnauthorizedException;
 import com.eaglebank.metrics.AuthenticationMetricsCollector;
+import com.eaglebank.repository.UserRepository;
 import com.eaglebank.security.JwtTokenProvider;
 import com.eaglebank.security.UserPrincipal;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,6 +43,8 @@ public class AuthService {
     private final AuthenticationMetricsCollector authMetricsCollector;
     private final LoginAttemptService loginAttemptService;
     private final RefreshTokenService refreshTokenService;
+    private final UserRepository userRepository;
+    private final TokenBlacklistService tokenBlacklistService;
     
     public AuthResponse login(LoginRequest loginRequest) {
         log.debug("Attempting to authenticate user: {}", loginRequest.getEmail());
@@ -66,13 +70,16 @@ public class AuthService {
             );
             
             UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-            String jwt = tokenProvider.generateToken(userPrincipal.getId(), userPrincipal.getEmail());
+            String jwt = tokenProvider.generateToken(userPrincipal.getId(), userPrincipal.getEmail(), userPrincipal.getSecurityVersion());
             
             Date expirationDate = tokenProvider.getExpirationDateFromToken(jwt);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
                     expirationDate.toInstant(), 
                     ZoneId.systemDefault()
             );
+            
+            // Track the generated token for this user (for bulk revocation on password change)
+            tokenBlacklistService.trackUserToken(userPrincipal.getId(), jwt, expirationDate);
             
             log.info("User {} authenticated successfully", loginRequest.getEmail());
             
@@ -182,8 +189,12 @@ public class AuthService {
             // Validate refresh token
             RefreshTokenService.RefreshTokenData tokenData = refreshTokenService.validateRefreshToken(refreshToken);
             
-            // Generate new access token
-            String jwt = tokenProvider.generateToken(tokenData.getUserId(), tokenData.getEmail());
+            // Get current user to get latest security version
+            User user = userRepository.findById(tokenData.getUserId())
+                    .orElseThrow(() -> new UnauthorizedException("User not found"));
+            
+            // Generate new access token with current security version
+            String jwt = tokenProvider.generateToken(tokenData.getUserId(), tokenData.getEmail(), user.getSecurityVersion());
             
             Date expirationDate = tokenProvider.getExpirationDateFromToken(jwt);
             LocalDateTime expiresAt = LocalDateTime.ofInstant(
