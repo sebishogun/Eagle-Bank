@@ -56,7 +56,6 @@ Each user has a `security_version` field (integer) that increments on critical s
 
 ## JWE (JSON Web Encryption)
 
-### What is JWE?
 JWE adds a layer of encryption on top of signed JWTs, creating nested tokens (sign-then-encrypt pattern).
 
 ### Implementation Details

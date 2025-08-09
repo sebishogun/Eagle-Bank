@@ -34,12 +34,7 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Transactional
-@ContextConfiguration(classes = {TestStrategyConfiguration.class})
-class TransactionSearchIntegrationTest {
+class TransactionSearchIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

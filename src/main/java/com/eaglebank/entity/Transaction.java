@@ -60,7 +60,8 @@ public class Transaction extends BaseEntity {
             status = TransactionStatus.COMPLETED;
         }
         if (referenceNumber == null) {
-            referenceNumber = "TXN-" + System.currentTimeMillis();
+            // Use UUID for guaranteed uniqueness in concurrent scenarios
+            referenceNumber = "TXN-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         }
         super.onCreate();
     }

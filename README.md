@@ -95,8 +95,11 @@ The API has been designed with extensibility in mind, implementing numerous addi
 - **JWT Token Management**: Access/refresh token pattern with configurable expiration
 - **Admin Role System**: Separate admin endpoints with elevated privileges
 - **Comprehensive Audit Logging**: Every operation is tracked with user, timestamp, and changes
-- **Password Security**: BCrypt hashing with proper salt rounds and  entropy validation for passwords
+- **Password Security**: BCrypt hashing with proper salt rounds and entropy validation for passwords
 - **Input Validation**: Extensive validation for all DTOs with detailed error messages
+
+#### Advanced Security Implementation
+The API implements enterprise-grade security with multiple layers of protection. **Authentication** uses JWT tokens signed with RSA (RS256) for asymmetric cryptography, with optional JWE encryption (disabled by default, enable via `JWT_ENCRYPTION_ENABLED=true`) that wraps signed tokens in AES-256-GCM encryption for complete payload confidentiality. **Token management** includes Redis-based blacklisting for immediate logout, security versioning that invalidates all tokens on password change preventing race conditions, and refresh token rotation with 15-minute access tokens and 7-day refresh tokens. **Password protection** employs BCrypt with automatic per-password salting and 1,024 hashing rounds, making passwords irreversible and resistant to rainbow table attacks. The system tracks failed login attempts, implements rate limiting, and maintains comprehensive audit trails for compliance requirements.
 
 #### Enterprise Patterns & Best Practices
 - **Design Patterns**: Factory, Strategy, Observer patterns for extensible architecture

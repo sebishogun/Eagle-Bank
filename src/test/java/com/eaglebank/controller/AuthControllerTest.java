@@ -9,7 +9,10 @@ import com.eaglebank.security.JwtTokenProvider;
 import com.eaglebank.security.RateLimitingFilter;
 import com.eaglebank.security.SecurityHeadersFilter;
 import com.eaglebank.service.AuthService;
+import com.eaglebank.service.JweTokenService;
+import com.eaglebank.service.KeyManagementService;
 import com.eaglebank.service.RefreshTokenService;
+import com.eaglebank.service.TokenBlacklistService;
 import com.eaglebank.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,6 +71,15 @@ class AuthControllerTest {
     
     @MockitoBean
     private UserService userService;
+    
+    @MockitoBean
+    private TokenBlacklistService tokenBlacklistService;
+    
+    @MockitoBean
+    private JweTokenService jweTokenService;
+    
+    @MockitoBean
+    private KeyManagementService keyManagementService;
     
     private LoginRequest loginRequest;
     private AuthResponse authResponse;

@@ -35,11 +35,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest
-@ActiveProfiles("test")
-@Transactional
-@ContextConfiguration(classes = {TestStrategyConfiguration.class})
-class MetricsCacheIntegrationTest {
+class MetricsCacheIntegrationTest extends BaseIntegrationTest {
     
     @Autowired
     private AccountService accountService;
