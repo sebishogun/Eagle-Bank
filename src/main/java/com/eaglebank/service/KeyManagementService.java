@@ -24,9 +24,19 @@ public class KeyManagementService {
     @Value("${jwt.rsa.public-key:}")
     private String publicKeyString;
     
+    @Value("${jwt.encryption.rsa.private-key:}")
+    private String encryptionPrivateKeyString;
+    
+    @Value("${jwt.encryption.rsa.public-key:}")
+    private String encryptionPublicKeyString;
+    
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private KeyPair keyPair;
+    
+    private PrivateKey encryptionPrivateKey;
+    private PublicKey encryptionPublicKey;
+    private KeyPair encryptionKeyPair;
     
     static {
         Security.addProvider(new BouncyCastleProvider());
@@ -34,12 +44,22 @@ public class KeyManagementService {
     
     @PostConstruct
     public void init() {
+        // Initialize signing keys
         if (privateKeyString.isEmpty() || publicKeyString.isEmpty()) {
-            log.info("No RSA keys provided, generating new key pair");
+            log.info("No RSA signing keys provided, generating new key pair");
             generateKeyPair();
         } else {
-            log.info("Loading RSA keys from configuration");
+            log.info("Loading RSA signing keys from configuration");
             loadKeysFromConfiguration();
+        }
+        
+        // Initialize encryption keys
+        if (encryptionPrivateKeyString.isEmpty() || encryptionPublicKeyString.isEmpty()) {
+            log.info("No RSA encryption keys provided, generating new encryption key pair");
+            generateEncryptionKeyPair();
+        } else {
+            log.info("Loading RSA encryption keys from configuration");
+            loadEncryptionKeysFromConfiguration();
         }
     }
     
@@ -138,5 +158,83 @@ public class KeyManagementService {
             return keyPair;
         }
         return new KeyPair(publicKey, privateKey);
+    }
+    
+    /**
+     * Generate a new RSA key pair for encryption
+     */
+    private void generateEncryptionKeyPair() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048, new SecureRandom());
+            encryptionKeyPair = keyPairGenerator.generateKeyPair();
+            encryptionPrivateKey = encryptionKeyPair.getPrivate();
+            encryptionPublicKey = encryptionKeyPair.getPublic();
+            
+            // Log the generated keys (only for development - remove in production)
+            String privateKeyBase64 = Base64.getEncoder().encodeToString(encryptionPrivateKey.getEncoded());
+            String publicKeyBase64 = Base64.getEncoder().encodeToString(encryptionPublicKey.getEncoded());
+            
+            log.warn("Generated new RSA encryption key pair. Store these securely:");
+            log.warn("Encryption Private Key (Base64): {}", privateKeyBase64);
+            log.warn("Encryption Public Key (Base64): {}", publicKeyBase64);
+            log.warn("Set these as JWT_ENCRYPTION_RSA_PRIVATE_KEY and JWT_ENCRYPTION_RSA_PUBLIC_KEY environment variables");
+            
+        } catch (Exception e) {
+            log.error("Error generating RSA encryption key pair", e);
+            throw new RuntimeException("Failed to generate RSA encryption key pair", e);
+        }
+    }
+    
+    /**
+     * Load RSA encryption keys from configuration
+     */
+    private void loadEncryptionKeysFromConfiguration() {
+        try {
+            // Remove any whitespace and header/footer if present
+            String cleanPrivateKey = cleanKeyString(encryptionPrivateKeyString);
+            String cleanPublicKey = cleanKeyString(encryptionPublicKeyString);
+            
+            // Decode private key
+            byte[] privateKeyBytes = Base64.getDecoder().decode(cleanPrivateKey);
+            PKCS8EncodedKeySpec privateSpec = new PKCS8EncodedKeySpec(privateKeyBytes);
+            KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            encryptionPrivateKey = keyFactory.generatePrivate(privateSpec);
+            
+            // Decode public key
+            byte[] publicKeyBytes = Base64.getDecoder().decode(cleanPublicKey);
+            X509EncodedKeySpec publicSpec = new X509EncodedKeySpec(publicKeyBytes);
+            encryptionPublicKey = keyFactory.generatePublic(publicSpec);
+            
+            log.info("RSA encryption keys loaded successfully from configuration");
+            
+        } catch (Exception e) {
+            log.error("Error loading RSA encryption keys from configuration, generating new ones", e);
+            generateEncryptionKeyPair();
+        }
+    }
+    
+    /**
+     * Get the encryption key pair
+     */
+    public KeyPair getEncryptionKeyPair() {
+        if (encryptionKeyPair != null) {
+            return encryptionKeyPair;
+        }
+        return new KeyPair(encryptionPublicKey, encryptionPrivateKey);
+    }
+    
+    /**
+     * Get the encryption private key
+     */
+    public PrivateKey getEncryptionPrivateKey() {
+        return encryptionPrivateKey;
+    }
+    
+    /**
+     * Get the encryption public key
+     */
+    public PublicKey getEncryptionPublicKey() {
+        return encryptionPublicKey;
     }
 }

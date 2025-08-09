@@ -54,7 +54,7 @@ public class AuditController {
     })
     public ResponseEntity<Page<AuditEntry>> getAllAuditEntries(
             @Parameter(description = "Pagination parameters")
-            @PageableDefault(size = 50, sort = "createdAt,desc") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         
         log.info("Admin retrieving all audit entries");
         Page<AuditEntry> entries = auditRepository.findAll(pageable);
@@ -80,7 +80,7 @@ public class AuditController {
             @Parameter(description = "User ID", required = true)
             @PathVariable UUID userId,
             @Parameter(description = "Pagination parameters")
-            @PageableDefault(size = 50, sort = "createdAt,desc") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         
         // Check if user is accessing their own audit trail or is admin
         if (!userPrincipal.getId().equals(userId) && !userPrincipal.hasRole("ADMIN")) {
@@ -112,7 +112,7 @@ public class AuditController {
             @Parameter(description = "Account ID", required = true)
             @PathVariable UUID accountId,
             @Parameter(description = "Pagination parameters")
-            @PageableDefault(size = 50, sort = "createdAt,desc") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         
         log.info("Admin retrieving audit entries for account: {}", accountId);
         Page<AuditEntry> entries = auditRepository.findByEntityTypeAndEntityId("Account", accountId.toString(), pageable);
@@ -138,7 +138,7 @@ public class AuditController {
             @Parameter(description = "Audit action", required = true)
             @PathVariable AuditEntry.AuditAction action,
             @Parameter(description = "Pagination parameters")
-            @PageableDefault(size = 50, sort = "createdAt,desc") Pageable pageable) {
+            @PageableDefault(size = 50, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC) Pageable pageable) {
         
         log.info("Admin retrieving audit entries for action: {}", action);
         Page<AuditEntry> entries = auditRepository.findByAction(action, pageable);

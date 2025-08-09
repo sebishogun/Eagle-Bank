@@ -51,7 +51,8 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Account> accounts = new ArrayList<>();
-    
+
+    // in the future it would be an entity with many-to-many relationship
     public enum Role {
         USER,
         ADMIN

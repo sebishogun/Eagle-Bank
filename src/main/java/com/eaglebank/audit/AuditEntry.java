@@ -58,7 +58,7 @@ public class AuditEntry {
     @Column(name = "error_message")
     private String errorMessage;
     
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "audit_log_details", joinColumns = @JoinColumn(name = "audit_id"))
     @MapKeyColumn(name = "detail_key")
     @Column(name = "detail_value")

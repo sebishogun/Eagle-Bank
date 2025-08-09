@@ -43,11 +43,10 @@ public class JweTokenService {
     public void init() {
         if (encryptionEnabled) {
             log.info("JWE encryption is enabled. Initializing encryption keys...");
-            // For now, reuse the same keys. In production, use separate encryption keys
-            // TODO: Generate separate encryption key pair
-            KeyPair keyPair = keyManagementService.getKeyPair();
-            this.encryptionPublicKey = keyPair.getPublic();
-            this.encryptionPrivateKey = keyPair.getPrivate();
+            // Use dedicated encryption keys separate from signing keys
+            KeyPair encryptionKeyPair = keyManagementService.getEncryptionKeyPair();
+            this.encryptionPublicKey = encryptionKeyPair.getPublic();
+            this.encryptionPrivateKey = encryptionKeyPair.getPrivate();
             log.info("JWE encryption initialized with algorithm: {} and content encryption: {}", 
                     keyAlgorithm, contentAlgorithm);
         } else {

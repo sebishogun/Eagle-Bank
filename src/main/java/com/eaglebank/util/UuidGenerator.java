@@ -3,7 +3,7 @@ package com.eaglebank.util;
 import com.github.f4b6a3.uuid.UuidCreator;
 import java.util.UUID;
 
-public class UuidGenerator {
+public final class UuidGenerator {
     
     private UuidGenerator() {
         throw new IllegalStateException("Utility class");
